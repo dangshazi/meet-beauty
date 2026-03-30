@@ -1,7 +1,9 @@
+import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/app/theme/app_colors.dart';
 import 'package:meet_beauty/features/analysis/application/analysis_controller.dart';
+import 'package:meet_beauty/services/camera/camera_service.dart';
 import 'package:provider/provider.dart';
 
 class AnalysisPage extends StatefulWidget {
@@ -43,27 +45,36 @@ class _AnalysisPageState extends State<AnalysisPage> {
                   child: Stack(
                     alignment: Alignment.center,
                     children: [
-                      // Placeholder for camera preview
-                      if (!controller.isCameraInitialized)
-                        const Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            CircularProgressIndicator(color: Colors.white),
-                            SizedBox(height: 16),
-                            Text(
-                              'Initializing camera...',
-                              style: TextStyle(color: Colors.white),
-                            ),
-                          ],
+                      // Camera preview or placeholder
+                      if (controller.isCameraInitialized && controller.cameraController != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: CameraPreview(controller.cameraController!),
+                        )
+                      else if (controller.cameraStatus == CameraStatus.permissionDenied ||
+                          controller.cameraStatus == CameraStatus.permissionPermanentlyDenied)
+                        _PermissionDeniedWidget(
+                          onRetry: () => context.read<AnalysisController>().startAnalysis(),
+                        )
+                      else if (controller.cameraStatus == CameraStatus.error)
+                        _ErrorWidget(
+                          message: controller.errorMessage ?? 'Camera error',
+                          onRetry: () => context.read<AnalysisController>().startAnalysis(),
                         )
                       else
                         Container(
                           color: Colors.grey[900],
                           child: const Center(
-                            child: Icon(
-                              Icons.face,
-                              size: 120,
-                              color: Colors.white24,
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                CircularProgressIndicator(color: Colors.white),
+                                SizedBox(height: 16),
+                                Text(
+                                  'Initializing camera...',
+                                  style: TextStyle(color: Colors.white),
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -118,7 +129,12 @@ class _AnalysisPageState extends State<AnalysisPage> {
                           label: 'Lip Type',
                           value: controller.featureResult!.lipType.name,
                         ),
-                      ] else
+                      ] else if (controller.currentLandmarks != null)
+                        Text(
+                          'Face detected! Tap "Capture & Analyze" to continue.',
+                          style: const TextStyle(color: AppColors.textSecondary),
+                        )
+                      else
                         const Text(
                           'Position your face in the camera view',
                           style: TextStyle(color: AppColors.textSecondary),
@@ -128,9 +144,17 @@ class _AnalysisPageState extends State<AnalysisPage> {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: controller.isAnalysisComplete
-                              ? () => context.go('/tutorial')
-                              : null,
-                          child: const Text('Start Tutorial'),
+                              ? () => context.go('/recommendation', extra: controller.featureResult)
+                              : (controller.currentLandmarks != null && !controller.isAnalyzing)
+                                  ? () => controller.completeAnalysis()
+                                  : null,
+                          child: Text(
+                            controller.isAnalysisComplete
+                                ? 'Get Recommendations'
+                                : controller.isAnalyzing
+                                    ? 'Analyzing...'
+                                    : 'Capture & Analyze',
+                          ),
                         ),
                       ),
                     ],
@@ -179,6 +203,70 @@ class _FeatureBadge extends StatelessWidget {
               fontSize: 12,
             ),
           ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ErrorWidget extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+
+  const _ErrorWidget({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
+          const SizedBox(height: 16),
+          Text(
+            'Camera Error',
+            style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: const TextStyle(color: Colors.white70, fontSize: 14),
+            textAlign: TextAlign.center,
+            maxLines: 5,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 24),
+          ElevatedButton(
+            onPressed: onRetry,
+            child: const Text('Retry'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionDeniedWidget extends StatelessWidget {
+  final VoidCallback onRetry;
+
+  const _PermissionDeniedWidget({required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.white54),
+        const SizedBox(height: 16),
+        const Text(
+          'Camera permission required',
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+        const SizedBox(height: 24),
+        ElevatedButton(
+          onPressed: onRetry,
+          child: const Text('Grant Permission'),
         ),
       ],
     );

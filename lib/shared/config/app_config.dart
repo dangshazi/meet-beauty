@@ -4,6 +4,7 @@ import 'package:meet_beauty/features/analysis/application/analysis_controller.da
 import 'package:meet_beauty/features/tutorial/application/tutorial_controller.dart';
 import 'package:meet_beauty/features/recommendation/application/recommendation_controller.dart';
 import 'package:meet_beauty/features/result/application/scoring_controller.dart';
+import 'package:meet_beauty/services/face_tracking_controller.dart';
 
 class AppConfig {
   AppConfig._();
@@ -28,5 +29,6 @@ class AppConfig {
     ChangeNotifierProvider(create: (_) => TutorialController()),
     ChangeNotifierProvider(create: (_) => RecommendationController()),
     ChangeNotifierProvider(create: (_) => ScoringController()),
+    ChangeNotifierProvider(create: (_) => FaceTrackingController()),
   ];
 }

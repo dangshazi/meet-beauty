@@ -1,10 +1,14 @@
 import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/features/home/presentation/home_page.dart';
 import 'package:meet_beauty/features/analysis/presentation/analysis_page.dart';
+import 'package:meet_beauty/features/recommendation/presentation/recommendation_page.dart';
 import 'package:meet_beauty/features/tutorial/presentation/tutorial_page.dart';
 import 'package:meet_beauty/features/result/presentation/result_page.dart';
+import 'package:meet_beauty/shared/models/face_feature_result.dart';
 
-final appRouter = GoRouter(
+/// Creates a fresh [GoRouter] with all app routes.
+/// Call this in tests to avoid shared navigation state between test cases.
+GoRouter buildAppRouter() => GoRouter(
   initialLocation: '/',
   routes: [
     GoRoute(
@@ -18,6 +22,14 @@ final appRouter = GoRouter(
       builder: (context, state) => const AnalysisPage(),
     ),
     GoRoute(
+      path: '/recommendation',
+      name: 'recommendation',
+      builder: (context, state) {
+        final result = state.extra as FaceFeatureResult?;
+        return RecommendationPage(analysisResult: result);
+      },
+    ),
+    GoRoute(
       path: '/tutorial',
       name: 'tutorial',
       builder: (context, state) => const TutorialPage(),
@@ -29,3 +41,6 @@ final appRouter = GoRouter(
     ),
   ],
 );
+
+/// Singleton router for production use.
+final appRouter = buildAppRouter();
