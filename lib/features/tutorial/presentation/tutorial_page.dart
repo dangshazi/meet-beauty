@@ -19,27 +19,32 @@ class TutorialPage extends StatefulWidget {
 
 class _TutorialPageState extends State<TutorialPage>
     with WidgetsBindingObserver {
-  // Camera permission state
-  bool _permissionGranted = false;
-  bool _permissionChecked = false;
+  // Cache controller reference so dispose() can call it without context.
+  late FaceTrackingController _tracker;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _tracker = context.read<FaceTrackingController>();
+  }
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _requestCameraPermission();
-      if (mounted) {
-        context.read<TutorialController>().startTutorial();
-      }
+      if (!mounted) return;
+      context.read<TutorialController>().startTutorial();
+      // Camera permission + init is handled inside FaceTrackingController
+      await _tracker.startTracking();
     });
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    // Stop camera tracking when leaving the page
-    context.read<FaceTrackingController>().stopTracking();
+    // FaceTrackingController.dispose() (called by Provider) handles
+    // stopTracking() — no need to call it here.
     super.dispose();
   }
 
@@ -47,38 +52,16 @@ class _TutorialPageState extends State<TutorialPage>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    final tracker = context.read<FaceTrackingController>();
     switch (state) {
       case AppLifecycleState.paused:
       case AppLifecycleState.inactive:
-        tracker.pauseTracking();
+        _tracker.pauseTracking();
         break;
       case AppLifecycleState.resumed:
-        tracker.resumeTracking();
+        _tracker.resumeTracking();
         break;
       default:
         break;
-    }
-  }
-
-  // ── Permission ────────────────────────────────────────────────────────────
-
-  Future<void> _requestCameraPermission() async {
-    final status = await Permission.camera.request();
-    if (!mounted) return;
-
-    if (status.isGranted) {
-      setState(() {
-        _permissionGranted = true;
-        _permissionChecked = true;
-      });
-      // Start tracking after permission is granted
-      await context.read<FaceTrackingController>().startTracking();
-    } else {
-      setState(() {
-        _permissionGranted = false;
-        _permissionChecked = true;
-      });
     }
   }
 
@@ -86,31 +69,31 @@ class _TutorialPageState extends State<TutorialPage>
 
   @override
   Widget build(BuildContext context) {
-    if (!_permissionChecked) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
-    }
-
-    if (!_permissionGranted) {
-      return _PermissionDeniedView(onRetry: _requestCameraPermission);
-    }
-
     return Scaffold(
       body: Consumer2<TutorialController, FaceTrackingController>(
         builder: (context, tutorial, tracker, _) {
+          // Show permission-denied UI when tracker reports a permission error
+          if (tracker.state == TrackingState.error &&
+              (tracker.errorMessage?.contains('permission') == true ||
+                  tracker.errorMessage?.contains('denied') == true)) {
+            return _PermissionDeniedView(
+              onRetry: () => tracker.startTracking(),
+            );
+          }
+
           return Column(
             children: [
-              // ── Camera + AR overlay ────────────────────────────────────────
               Expanded(
                 flex: 3,
                 child: _CameraSection(
                   tutorial: tutorial,
                   tracker: tracker,
-                  onClose: () => context.go('/'),
+                  onClose: () {
+                    _tracker.stopTracking();
+                    context.go('/');
+                  },
                 ),
               ),
-              // ── Step instructions ─────────────────────────────────────────
               _StepPanel(
                 tutorial: tutorial,
                 onComplete: () => _completeTutorial(tutorial),
@@ -123,6 +106,8 @@ class _TutorialPageState extends State<TutorialPage>
   }
 
   void _completeTutorial(TutorialController controller) {
+    // Stop camera tracking before leaving the page.
+    _tracker.stopTracking();
     controller.completeTutorial();
     context.go('/result');
   }
@@ -145,7 +130,6 @@ class _CameraSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Tell the tracker the widget size for coordinate transformation
         WidgetsBinding.instance.addPostFrameCallback((_) {
           tracker.updatePreviewSize(
             Size(constraints.maxWidth, constraints.maxHeight),
@@ -155,10 +139,8 @@ class _CameraSection extends StatelessWidget {
         return Stack(
           fit: StackFit.expand,
           children: [
-            // Live camera feed
             _buildCameraPreview(context),
 
-            // AR makeup overlay
             if (tutorial.currentStep != null)
               Positioned.fill(
                 child: CustomPaint(
@@ -169,7 +151,6 @@ class _CameraSection extends StatelessWidget {
                 ),
               ),
 
-            // No-face hint
             if (tracker.isTracking && !tracker.isFaceDetected)
               const Positioned(
                 bottom: 16,
@@ -178,15 +159,14 @@ class _CameraSection extends StatelessWidget {
                 child: _FaceHint(),
               ),
 
-            // Tracking initialising indicator
             if (tracker.state == TrackingState.initializing)
-              const Center(child: CircularProgressIndicator(color: Colors.white)),
+              const Center(
+                child: CircularProgressIndicator(color: Colors.white),
+              ),
 
-            // Tracking error banner
             if (tracker.state == TrackingState.error)
               _ErrorBanner(message: tracker.errorMessage),
 
-            // Close button
             Positioned(
               top: 48,
               left: 16,
@@ -196,7 +176,6 @@ class _CameraSection extends StatelessWidget {
               ),
             ),
 
-            // Step counter badge
             Positioned(
               top: 48,
               right: 16,
@@ -290,7 +269,6 @@ class _StepPanel extends StatelessWidget {
           ],
           const SizedBox(height: 20),
 
-          // Progress dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(
@@ -311,7 +289,6 @@ class _StepPanel extends StatelessWidget {
           ),
           const SizedBox(height: 20),
 
-          // Navigation buttons
           Row(
             children: [
               if (tutorial.currentStepIndex > 0) ...[

@@ -1,0 +1,91 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
+
+import 'helpers/test_app.dart';
+
+// Helper: short pump to let the navigation animation finish.
+Future<void> _settle(WidgetTester tester) async {
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(const Duration(milliseconds: 500));
+}
+
+void main() {
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  group('分析推荐流程', () {
+    testWidgets('分析页显示相机区域和分析按钮', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await tester.pump(const Duration(seconds: 2));
+
+      await tester.tap(find.text('Start Learning'));
+      await _settle(tester);
+
+      expect(find.text('Face Analysis'), findsOneWidget);
+      expect(find.text('Your Features'), findsOneWidget);
+      expect(find.text('Capture & Analyze'), findsOneWidget);
+    });
+
+    testWidgets('分析完成后按钮变为 Get Recommendations', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await tester.pump(const Duration(seconds: 2));
+
+      await tester.tap(find.text('Start Learning'));
+      await _settle(tester);
+
+      await tester.tap(find.text('Capture & Analyze'));
+      await _settle(tester);
+
+      expect(find.text('Get Recommendations'), findsOneWidget);
+    });
+
+    testWidgets('推荐页展示妆容名称和推荐理由', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await tester.pump(const Duration(seconds: 2));
+
+      await tester.tap(find.text('Start Learning'));
+      await _settle(tester);
+      await tester.tap(find.text('Capture & Analyze'));
+      await _settle(tester);
+      await tester.tap(find.text('Get Recommendations'));
+      await _settle(tester);
+
+      expect(find.text('Your Recommendations'), findsOneWidget);
+      expect(find.text('Natural Daily Look'), findsAtLeast(1));
+      expect(find.text('Perfect for everyday wear'), findsAtLeast(1));
+    });
+
+    testWidgets('推荐页选择模板后进入教学页', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await tester.pump(const Duration(seconds: 2));
+
+      await tester.tap(find.text('Start Learning'));
+      await _settle(tester);
+      await tester.tap(find.text('Capture & Analyze'));
+      await _settle(tester);
+      await tester.tap(find.text('Get Recommendations'));
+      await _settle(tester);
+
+      // On recommendation page, the button is also labelled "Start Learning"
+      await tester.tap(find.text('Start Learning'));
+      await _settle(tester);
+
+      expect(find.text('Apply Lip Color'), findsOneWidget);
+      expect(find.text('1 / 3'), findsOneWidget);
+    });
+
+    testWidgets('推荐页显示教学步骤数量', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+      await tester.pump(const Duration(seconds: 2));
+
+      await tester.tap(find.text('Start Learning'));
+      await _settle(tester);
+      await tester.tap(find.text('Capture & Analyze'));
+      await _settle(tester);
+      await tester.tap(find.text('Get Recommendations'));
+      await _settle(tester);
+
+      expect(find.text('3 steps'), findsWidgets);
+    });
+  });
+}

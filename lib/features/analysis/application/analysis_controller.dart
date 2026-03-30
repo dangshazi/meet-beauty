@@ -3,19 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:meet_beauty/services/camera/camera_service.dart';
 import 'package:meet_beauty/services/facemesh/face_mesh_service.dart';
 import 'package:meet_beauty/shared/models/face_feature_result.dart';
-import 'package:meet_beauty/shared/models/face_point.dart';
+import 'package:meet_beauty/shared/models/face_landmarks.dart';
 
 class AnalysisController extends ChangeNotifier {
   final CameraService _cameraService;
   final FaceMeshService _faceMeshService;
 
+  AnalysisController({
+    CameraService? cameraService,
+    FaceMeshService? faceMeshService,
+  })  : _cameraService = cameraService ?? CameraService(),
+        _faceMeshService = faceMeshService ?? FaceMeshService();
+
   bool _isAnalyzing = false;
   bool _isAnalysisComplete = false;
   FaceFeatureResult? _featureResult;
   String? _errorMessage;
-  List<FacePoint>? _currentLandmarks;
-
-  AnalysisController(this._cameraService, this._faceMeshService);
+  FaceLandmarks? _currentLandmarks;
 
   // Getters
   bool get isCameraInitialized => _cameraService.isInitialized;
@@ -26,13 +30,12 @@ class AnalysisController extends ChangeNotifier {
   CameraStatus get cameraStatus => _cameraService.status;
   String? get cameraErrorMessage => _cameraService.errorMessage;
   CameraController? get cameraController => _cameraService.controller;
-  List<FacePoint>? get currentLandmarks => _currentLandmarks;
+  FaceLandmarks? get currentLandmarks => _currentLandmarks;
 
   Future<void> startAnalysis() async {
     _errorMessage = null;
     notifyListeners();
 
-    // Initialize camera
     await _cameraService.initialize();
 
     if (!_cameraService.isInitialized) {
@@ -42,8 +45,6 @@ class AnalysisController extends ChangeNotifier {
     }
 
     notifyListeners();
-
-    // Start face detection stream
     _startFaceDetection();
   }
 
@@ -56,8 +57,11 @@ class AnalysisController extends ChangeNotifier {
     _cameraService.startImageStream((image) async {
       if (_isAnalyzing) return;
 
-      final landmarks = await _faceMeshService.processCameraImage(image, camera);
-      if (landmarks != null && landmarks.isNotEmpty) {
+      final inputImage = _faceMeshService.convertCameraImage(image, camera);
+      if (inputImage == null) return;
+
+      final landmarks = await _faceMeshService.detectFace(inputImage);
+      if (landmarks != null) {
         _currentLandmarks = landmarks;
         notifyListeners();
       }
@@ -96,6 +100,7 @@ class AnalysisController extends ChangeNotifier {
   @override
   void dispose() {
     _cameraService.dispose();
+    _faceMeshService.dispose();
     super.dispose();
   }
 }

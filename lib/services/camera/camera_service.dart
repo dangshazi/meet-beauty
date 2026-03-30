@@ -13,53 +13,55 @@ enum CameraStatus {
 class CameraService {
   CameraController? _controller;
   List<CameraDescription> _cameras = [];
-  CameraStatus _status = CameraStatus.uninitialized;
-  String? _errorMessage;
+
+  @protected
+  CameraStatus cameraStatus = CameraStatus.uninitialized;
+
+  @protected
+  String? cameraErrorMessage;
 
   CameraController? get controller => _controller;
   bool get isInitialized => _controller?.value.isInitialized ?? false;
   List<CameraDescription> get cameras => _cameras;
-  CameraStatus get status => _status;
-  String? get errorMessage => _errorMessage;
+  CameraStatus get status => cameraStatus;
+  String? get errorMessage => cameraErrorMessage;
 
   Future<bool> requestPermission() async {
     final status = await Permission.camera.request();
     if (status.isGranted) {
       return true;
     } else if (status.isPermanentlyDenied) {
-      _status = CameraStatus.permissionPermanentlyDenied;
-      _errorMessage = 'Camera permission permanently denied. Please enable in Settings.';
+      cameraStatus = CameraStatus.permissionPermanentlyDenied;
+      cameraErrorMessage =
+          'Camera permission permanently denied. Please enable in Settings.';
       return false;
     } else {
-      _status = CameraStatus.permissionDenied;
-      _errorMessage = 'Camera permission denied';
+      cameraStatus = CameraStatus.permissionDenied;
+      cameraErrorMessage = 'Camera permission denied';
       return false;
     }
   }
 
   Future<void> initialize() async {
     try {
-      // Check and request permission
       final hasPermission = await requestPermission();
-      if (!hasPermission) {
-        return;
-      }
+      if (!hasPermission) return;
 
       _cameras = await availableCameras();
       if (_cameras.isEmpty) {
-        _status = CameraStatus.error;
-        _errorMessage = 'No cameras available';
+        cameraStatus = CameraStatus.error;
+        cameraErrorMessage = 'No cameras available';
         return;
       }
 
-      // Find front camera
       final frontCamera = _cameras.firstWhere(
         (camera) => camera.lensDirection == CameraLensDirection.front,
         orElse: () => _cameras.first,
       );
 
       debugPrint('CameraService: Found ${_cameras.length} cameras');
-      debugPrint('CameraService: Using ${frontCamera.name} (${frontCamera.lensDirection})');
+      debugPrint(
+          'CameraService: Using ${frontCamera.name} (${frontCamera.lensDirection})');
 
       _controller = CameraController(
         frontCamera,
@@ -71,11 +73,11 @@ class CameraService {
       debugPrint('CameraService: Initializing controller...');
       await _controller!.initialize();
       debugPrint('CameraService: Controller initialized successfully');
-      _status = CameraStatus.ready;
-      _errorMessage = null;
+      cameraStatus = CameraStatus.ready;
+      cameraErrorMessage = null;
     } catch (e, stackTrace) {
-      _status = CameraStatus.error;
-      _errorMessage = e.toString();
+      cameraStatus = CameraStatus.error;
+      cameraErrorMessage = e.toString();
       debugPrint('Camera initialization error: $e');
       debugPrint('Stack trace: $stackTrace');
     }
@@ -99,7 +101,7 @@ class CameraService {
     stopImageStream();
     _controller?.dispose();
     _controller = null;
-    _status = CameraStatus.uninitialized;
-    _errorMessage = null;
+    cameraStatus = CameraStatus.uninitialized;
+    cameraErrorMessage = null;
   }
 }

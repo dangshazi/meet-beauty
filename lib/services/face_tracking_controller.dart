@@ -28,8 +28,14 @@ enum TrackingState {
 ///  - Coordinate transform: image-space → widget-space (rotation + mirror + scale)
 ///  - EMA smoothing on landmark positions
 class FaceTrackingController extends ChangeNotifier {
-  final CameraService _cameraService = CameraService();
-  final FaceMeshService _faceMeshService = FaceMeshService();
+  final CameraService _cameraService;
+  final FaceMeshService _faceMeshService;
+
+  FaceTrackingController({
+    CameraService? cameraService,
+    FaceMeshService? faceMeshService,
+  })  : _cameraService = cameraService ?? CameraService(),
+        _faceMeshService = faceMeshService ?? FaceMeshService();
 
   TrackingState _state = TrackingState.idle;
   FaceLandmarks? _landmarks;
