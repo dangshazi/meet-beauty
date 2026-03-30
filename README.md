@@ -65,6 +65,12 @@ lib/
    flutter run
    ```
 
+4. Run integration tests (requires Android emulator or device):
+   ```bash
+   flutter test integration_test/ -d <device-id>
+   ```
+   See [TESTING.md](./TESTING.md) for full testing guide.
+
 ## Development Status
 
 This project is currently in MVP development phase. See the following documents for details:
