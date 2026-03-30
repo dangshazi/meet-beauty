@@ -1,8 +1,10 @@
 import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/features/home/presentation/home_page.dart';
 import 'package:meet_beauty/features/analysis/presentation/analysis_page.dart';
+import 'package:meet_beauty/features/recommendation/presentation/recommendation_page.dart';
 import 'package:meet_beauty/features/tutorial/presentation/tutorial_page.dart';
 import 'package:meet_beauty/features/result/presentation/result_page.dart';
+import 'package:meet_beauty/shared/models/face_feature_result.dart';
 
 final appRouter = GoRouter(
   initialLocation: '/',
@@ -16,6 +18,14 @@ final appRouter = GoRouter(
       path: '/analysis',
       name: 'analysis',
       builder: (context, state) => const AnalysisPage(),
+    ),
+    GoRoute(
+      path: '/recommendation',
+      name: 'recommendation',
+      builder: (context, state) {
+        final result = state.extra as FaceFeatureResult?;
+        return RecommendationPage(analysisResult: result);
+      },
     ),
     GoRoute(
       path: '/tutorial',
