@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/app/theme/app_colors.dart';
 import 'package:meet_beauty/features/analysis/application/analysis_controller.dart';
+import 'package:meet_beauty/features/analysis/presentation/face_mesh_painter.dart';
 import 'package:meet_beauty/services/camera/camera_service.dart';
 import 'package:provider/provider.dart';
 
@@ -46,12 +47,22 @@ class _AnalysisPageState extends State<AnalysisPage> {
                     alignment: Alignment.center,
                     children: [
                       // Camera preview or placeholder
-                      if (controller.isCameraInitialized && controller.cameraController != null)
+                      if (controller.isCameraInitialized && controller.cameraController != null) ...[
                         ClipRRect(
                           borderRadius: BorderRadius.circular(16),
                           child: CameraPreview(controller.cameraController!),
-                        )
-                      else if (controller.cameraStatus == CameraStatus.permissionDenied ||
+                        ),
+                        // Real-time face mesh overlay
+                        if (controller.currentLandmarks != null)
+                          Positioned.fill(
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(16),
+                              child: CustomPaint(
+                                painter: FaceMeshPainter(controller.currentLandmarks),
+                              ),
+                            ),
+                          ),
+                      ] else if (controller.cameraStatus == CameraStatus.permissionDenied ||
                           controller.cameraStatus == CameraStatus.permissionPermanentlyDenied)
                         _PermissionDeniedWidget(
                           onRetry: () => context.read<AnalysisController>().startAnalysis(),
