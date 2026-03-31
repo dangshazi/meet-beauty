@@ -21,6 +21,10 @@ class AnalysisController extends ChangeNotifier {
   String? _errorMessage;
   FaceLandmarks? _currentLandmarks;
 
+  // Stores the most recent raw frame so skin-tone analysis can sample pixels
+  CameraImage? _lastCameraImage;
+  CameraDescription? _frontCamera;
+
   // Getters
   bool get isCameraInitialized => _cameraService.isInitialized;
   bool get isAnalyzing => _isAnalyzing;
@@ -39,7 +43,8 @@ class AnalysisController extends ChangeNotifier {
     await _cameraService.initialize();
 
     if (!_cameraService.isInitialized) {
-      _errorMessage = _cameraService.errorMessage ?? 'Camera initialization failed';
+      _errorMessage =
+          _cameraService.errorMessage ?? 'Camera initialization failed';
       notifyListeners();
       return;
     }
@@ -49,7 +54,7 @@ class AnalysisController extends ChangeNotifier {
   }
 
   void _startFaceDetection() {
-    final camera = _cameraService.cameras.firstWhere(
+    _frontCamera = _cameraService.cameras.firstWhere(
       (c) => c.lensDirection == CameraLensDirection.front,
       orElse: () => _cameraService.cameras.first,
     );
@@ -57,7 +62,10 @@ class AnalysisController extends ChangeNotifier {
     _cameraService.startImageStream((image) async {
       if (_isAnalyzing) return;
 
-      final inputImage = _faceMeshService.convertCameraImage(image, camera);
+      _lastCameraImage = image;
+
+      final inputImage =
+          _faceMeshService.convertCameraImage(image, _frontCamera!);
       if (inputImage == null) return;
 
       final landmarks = await _faceMeshService.detectFace(inputImage);
@@ -75,8 +83,23 @@ class AnalysisController extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final result = _faceMeshService.analyzeFeatures(_currentLandmarks!);
+      var result = _faceMeshService.analyzeFeatures(_currentLandmarks!);
       if (result != null) {
+        // Enrich with skin-tone analysis when a camera frame is available
+        if (_lastCameraImage != null && _frontCamera != null) {
+          final skinTone = _faceMeshService.analyzeSkinTone(
+            _lastCameraImage!,
+            _currentLandmarks!,
+            _frontCamera!,
+          );
+          result = FaceFeatureResult(
+            faceShape: result.faceShape,
+            skinTone: skinTone,
+            lipType: result.lipType,
+            confidenceLevel: result.confidenceLevel,
+            ratios: result.ratios,
+          );
+        }
         _featureResult = result;
         _isAnalysisComplete = true;
       }
@@ -94,6 +117,7 @@ class AnalysisController extends ChangeNotifier {
     _featureResult = null;
     _errorMessage = null;
     _currentLandmarks = null;
+    _lastCameraImage = null;
     notifyListeners();
   }
 

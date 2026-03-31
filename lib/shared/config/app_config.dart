@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 import 'package:meet_beauty/features/analysis/application/analysis_controller.dart';
 import 'package:meet_beauty/features/tutorial/application/tutorial_controller.dart';
 import 'package:meet_beauty/features/recommendation/application/recommendation_controller.dart';
@@ -23,12 +23,22 @@ class AppConfig {
   // Face detection settings
   static const double minFaceConfidence = 0.5;
 
-  // Providers for state management - return a static list to avoid recreating
-  static final List<ChangeNotifierProvider<ChangeNotifier>> providers = [
-    ChangeNotifierProvider(create: (_) => AnalysisController()),
-    ChangeNotifierProvider(create: (_) => TutorialController()),
-    ChangeNotifierProvider(create: (_) => RecommendationController()),
-    ChangeNotifierProvider(create: (_) => ScoringController()),
-    ChangeNotifierProvider(create: (_) => FaceTrackingController()),
+  /// Providers for state management.
+  ///
+  /// Each provider specifies its concrete type explicitly so that
+  /// `context.read<AnalysisController>()` etc. resolve correctly.
+  /// Using `SingleChildWidget` avoids the generic-erasure problem of
+  /// `List<ChangeNotifierProvider<ChangeNotifier>>`.
+  static final List<SingleChildWidget> providers = [
+    ChangeNotifierProvider<AnalysisController>(
+        create: (_) => AnalysisController()),
+    ChangeNotifierProvider<TutorialController>(
+        create: (_) => TutorialController()),
+    ChangeNotifierProvider<RecommendationController>(
+        create: (_) => RecommendationController()),
+    ChangeNotifierProvider<ScoringController>(
+        create: (_) => ScoringController()),
+    ChangeNotifierProvider<FaceTrackingController>(
+        create: (_) => FaceTrackingController()),
   ];
 }

@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
+import 'package:provider/single_child_widget.dart';
 import 'package:meet_beauty/app/router.dart';
 import 'package:meet_beauty/app/theme/app_theme.dart';
 import 'package:meet_beauty/shared/config/app_config.dart';
 
 class MeetBeautyApp extends StatelessWidget {
   /// Optional providers override — pass in tests to inject mocks.
-  final List<ChangeNotifierProvider<ChangeNotifier>>? overrideProviders;
+  final List<SingleChildWidget>? overrideProviders;
 
   /// Optional router override — pass a fresh [GoRouter] in tests to avoid
   /// shared navigation state between test cases.
