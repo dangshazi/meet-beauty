@@ -78,6 +78,8 @@ This project is currently in MVP development phase. See the following documents 
 - [PRD-AI化妆教学APP.md](./PRD-AI化妆教学APP.md) - Product Requirements Document
 - [技术方案-MVP-AI化妆教学APP.md](./技术方案-MVP-AI化妆教学APP.md) - Technical Architecture
 - [开发任务清单-AI化妆教学APP.md](./开发任务清单-AI化妆教学APP.md) - Development Task List
+- [TESTING.md](./TESTING.md) - Testing Guide
+- [ANDROID_BUILD.md](./ANDROID_BUILD.md) - Android Build Guide
 
 ## License
 
