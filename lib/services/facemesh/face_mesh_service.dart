@@ -4,8 +4,10 @@ import 'dart:math' as math;
 import 'package:camera/camera.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Size;
+import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:meet_beauty/shared/models/face_feature_result.dart';
+import 'package:meet_beauty/shared/utils/mlkit_preview_coordinates.dart';
 import 'package:meet_beauty/shared/models/face_landmarks.dart';
 import 'package:meet_beauty/shared/models/face_point.dart';
 
@@ -28,12 +30,17 @@ class FaceMeshService {
 
   /// Convert a raw [CameraImage] frame into an [InputImage] suitable for ML Kit.
   /// Returns null when the image format is unsupported.
+  ///
+  /// [deviceOrientation] must match [CameraController.value.deviceOrientation]
+  /// on Android so ML Kit rotation matches the live preview.
   InputImage? convertCameraImage(
     CameraImage image,
-    CameraDescription camera,
-  ) {
+    CameraDescription camera, {
+    DeviceOrientation deviceOrientation = DeviceOrientation.portraitUp,
+  }) {
     try {
-      final rotation = _sensorToInputRotation(camera.sensorOrientation);
+      final rotation =
+          inputImageRotationForCamera(camera, deviceOrientation);
 
       if (Platform.isAndroid) {
         final plane = image.planes[0];
@@ -62,19 +69,6 @@ class FaceMeshService {
     } catch (e) {
       debugPrint('FaceMeshService: convertCameraImage error: $e');
       return null;
-    }
-  }
-
-  InputImageRotation _sensorToInputRotation(int sensorOrientation) {
-    switch (sensorOrientation) {
-      case 90:
-        return InputImageRotation.rotation90deg;
-      case 180:
-        return InputImageRotation.rotation180deg;
-      case 270:
-        return InputImageRotation.rotation270deg;
-      default:
-        return InputImageRotation.rotation0deg;
     }
   }
 

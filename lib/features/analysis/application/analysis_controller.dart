@@ -1,9 +1,12 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:meet_beauty/services/camera/camera_service.dart';
 import 'package:meet_beauty/services/facemesh/face_mesh_service.dart';
 import 'package:meet_beauty/shared/models/face_feature_result.dart';
 import 'package:meet_beauty/shared/models/face_landmarks.dart';
+import 'package:meet_beauty/shared/models/face_point.dart';
+import 'package:meet_beauty/shared/utils/mlkit_preview_coordinates.dart';
 
 class AnalysisController extends ChangeNotifier {
   final CameraService _cameraService;
@@ -21,9 +24,15 @@ class AnalysisController extends ChangeNotifier {
   String? _errorMessage;
   FaceLandmarks? _currentLandmarks;
 
+  /// Image-space landmarks from ML Kit (for [analyzeFeatures] / [analyzeSkinTone]).
+  FaceLandmarks? _rawLandmarksForAnalysis;
+
   // Stores the most recent raw frame so skin-tone analysis can sample pixels
   CameraImage? _lastCameraImage;
   CameraDescription? _frontCamera;
+
+  /// Preview widget dimensions — set by the UI layer for coordinate scaling.
+  Size? _previewWidgetSize;
 
   // Getters
   bool get isCameraInitialized => _cameraService.isInitialized;
@@ -35,6 +44,11 @@ class AnalysisController extends ChangeNotifier {
   String? get cameraErrorMessage => _cameraService.errorMessage;
   CameraController? get cameraController => _cameraService.controller;
   FaceLandmarks? get currentLandmarks => _currentLandmarks;
+
+  /// Call this from the UI once the preview widget size is known.
+  void updatePreviewSize(Size size) {
+    _previewWidgetSize = size;
+  }
 
   Future<void> startAnalysis() async {
     _errorMessage = null;
@@ -64,32 +78,44 @@ class AnalysisController extends ChangeNotifier {
 
       _lastCameraImage = image;
 
-      final inputImage =
-          _faceMeshService.convertCameraImage(image, _frontCamera!);
+      final ctrl = _cameraService.controller;
+      final deviceOrientation =
+          ctrl?.value.deviceOrientation ?? DeviceOrientation.portraitUp;
+
+      final inputImage = _faceMeshService.convertCameraImage(
+        image,
+        _frontCamera!,
+        deviceOrientation: deviceOrientation,
+      );
       if (inputImage == null) return;
 
       final landmarks = await _faceMeshService.detectFace(inputImage);
       if (landmarks != null) {
-        _currentLandmarks = landmarks;
+        _rawLandmarksForAnalysis = landmarks;
+        final imageSize =
+            Size(image.width.toDouble(), image.height.toDouble());
+        _currentLandmarks =
+            _transformLandmarks(landmarks, imageSize, _frontCamera!);
         notifyListeners();
       }
     });
   }
 
   Future<void> completeAnalysis() async {
-    if (_currentLandmarks == null) return;
+    if (_currentLandmarks == null || _rawLandmarksForAnalysis == null) return;
 
     _isAnalyzing = true;
     notifyListeners();
 
     try {
-      var result = _faceMeshService.analyzeFeatures(_currentLandmarks!);
+      var result =
+          _faceMeshService.analyzeFeatures(_rawLandmarksForAnalysis!);
       if (result != null) {
         // Enrich with skin-tone analysis when a camera frame is available
         if (_lastCameraImage != null && _frontCamera != null) {
           final skinTone = _faceMeshService.analyzeSkinTone(
             _lastCameraImage!,
-            _currentLandmarks!,
+            _rawLandmarksForAnalysis!,
             _frontCamera!,
           );
           result = FaceFeatureResult(
@@ -117,6 +143,7 @@ class AnalysisController extends ChangeNotifier {
     _featureResult = null;
     _errorMessage = null;
     _currentLandmarks = null;
+    _rawLandmarksForAnalysis = null;
     _lastCameraImage = null;
     notifyListeners();
   }
@@ -127,4 +154,121 @@ class AnalysisController extends ChangeNotifier {
     _faceMeshService.dispose();
     super.dispose();
   }
+
+  // ── Coordinate transform (image-space → widget-space) ─────────────────────
+
+  /// Transform [raw] landmarks from ML Kit image-space to Flutter widget-space.
+  FaceLandmarks _transformLandmarks(
+    FaceLandmarks raw,
+    Size imageSize,
+    CameraDescription camera,
+  ) {
+    final widgetSize = _previewWidgetSize;
+    if (widgetSize == null) return raw;
+
+    final ctrl = _cameraService.controller;
+    final deviceOrientation =
+        ctrl?.value.deviceOrientation ?? DeviceOrientation.portraitUp;
+    final rotation = inputImageRotationForCamera(camera, deviceOrientation);
+
+    final preview = ctrl?.value.previewSize;
+    final Size portraitPreview;
+    final bool useCover;
+    if (preview != null && preview.width > 0 && preview.height > 0) {
+      portraitPreview = Size(preview.height, preview.width);
+      useCover = true;
+    } else {
+      portraitPreview = widgetSize;
+      useCover = false;
+    }
+
+    Offset transform(FacePoint p) {
+      final inPortrait = translateMlKitPointToCanvas(
+        p,
+        portraitPreview,
+        imageSize,
+        rotation,
+        camera.lensDirection,
+      );
+      if (useCover) {
+        return applyBoxFitCoverToPoint(inPortrait, portraitPreview, widgetSize);
+      }
+      return inPortrait;
+    }
+
+    Rect transformRect(Rect r) {
+      final tl = transform(FacePoint(x: r.left, y: r.top));
+      final br = transform(FacePoint(x: r.right, y: r.bottom));
+      return Rect.fromPoints(tl, br);
+    }
+
+    return FaceLandmarks(
+      faceContour:
+          raw.faceContour.map((p) => _toFacePoint(transform(p))).toList(),
+      upperLipTop:
+          raw.upperLipTop.map((p) => _toFacePoint(transform(p))).toList(),
+      upperLipBottom:
+          raw.upperLipBottom.map((p) => _toFacePoint(transform(p))).toList(),
+      lowerLipTop:
+          raw.lowerLipTop.map((p) => _toFacePoint(transform(p))).toList(),
+      lowerLipBottom:
+          raw.lowerLipBottom.map((p) => _toFacePoint(transform(p))).toList(),
+      leftEyebrowTop:
+          raw.leftEyebrowTop.map((p) => _toFacePoint(transform(p))).toList(),
+      leftEyebrowBottom: raw.leftEyebrowBottom
+          .map((p) => _toFacePoint(transform(p)))
+          .toList(),
+      rightEyebrowTop:
+          raw.rightEyebrowTop.map((p) => _toFacePoint(transform(p))).toList(),
+      rightEyebrowBottom: raw.rightEyebrowBottom
+          .map((p) => _toFacePoint(transform(p)))
+          .toList(),
+      leftEyeContour:
+          raw.leftEyeContour.map((p) => _toFacePoint(transform(p))).toList(),
+      rightEyeContour:
+          raw.rightEyeContour.map((p) => _toFacePoint(transform(p))).toList(),
+      noseBridge:
+          raw.noseBridge.map((p) => _toFacePoint(transform(p))).toList(),
+      noseBottom:
+          raw.noseBottom.map((p) => _toFacePoint(transform(p))).toList(),
+      leftCheekContour:
+          raw.leftCheekContour.map((p) => _toFacePoint(transform(p))).toList(),
+      rightCheekContour: raw.rightCheekContour
+          .map((p) => _toFacePoint(transform(p)))
+          .toList(),
+      noseBase:
+          raw.noseBase != null ? _toFacePoint(transform(raw.noseBase!)) : null,
+      leftEye:
+          raw.leftEye != null ? _toFacePoint(transform(raw.leftEye!)) : null,
+      rightEye: raw.rightEye != null
+          ? _toFacePoint(transform(raw.rightEye!))
+          : null,
+      bottomMouth: raw.bottomMouth != null
+          ? _toFacePoint(transform(raw.bottomMouth!))
+          : null,
+      leftMouth: raw.leftMouth != null
+          ? _toFacePoint(transform(raw.leftMouth!))
+          : null,
+      rightMouth: raw.rightMouth != null
+          ? _toFacePoint(transform(raw.rightMouth!))
+          : null,
+      leftEar: raw.leftEar != null
+          ? _toFacePoint(transform(raw.leftEar!))
+          : null,
+      rightEar: raw.rightEar != null
+          ? _toFacePoint(transform(raw.rightEar!))
+          : null,
+      leftCheekLandmark: raw.leftCheekLandmark != null
+          ? _toFacePoint(transform(raw.leftCheekLandmark!))
+          : null,
+      rightCheekLandmark: raw.rightCheekLandmark != null
+          ? _toFacePoint(transform(raw.rightCheekLandmark!))
+          : null,
+      boundingBox: transformRect(raw.boundingBox),
+      headAngleY: raw.headAngleY,
+      headAngleZ: raw.headAngleZ,
+    );
+  }
+
+  FacePoint _toFacePoint(Offset o) => FacePoint(x: o.dx, y: o.dy);
 }

@@ -1,5 +1,6 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:meet_beauty/services/facemesh/face_mesh_service.dart';
 import 'package:meet_beauty/shared/models/face_feature_result.dart';
@@ -164,8 +165,9 @@ class MockFaceMeshService extends FaceMeshService {
   @override
   InputImage? convertCameraImage(
     CameraImage image,
-    CameraDescription camera,
-  ) =>
+    CameraDescription camera, {
+    DeviceOrientation deviceOrientation = DeviceOrientation.portraitUp,
+  }) =>
       null;
 
   @override

@@ -14,6 +14,28 @@ class AnalysisPage extends StatefulWidget {
   State<AnalysisPage> createState() => _AnalysisPageState();
 }
 
+/// Matches [TutorialPage] preview: portrait aspect + [BoxFit.cover] so overlay
+/// coordinates from [AnalysisController] stay aligned on all screen sizes.
+Widget _buildAnalysisCameraPreview(CameraController cameraController) {
+  final previewSize = cameraController.value.previewSize;
+  if (previewSize == null) {
+    return CameraPreview(cameraController);
+  }
+  return ClipRect(
+    child: OverflowBox(
+      alignment: Alignment.center,
+      child: FittedBox(
+        fit: BoxFit.cover,
+        child: SizedBox(
+          width: previewSize.height,
+          height: previewSize.width,
+          child: CameraPreview(cameraController),
+        ),
+      ),
+    ),
+  );
+}
+
 class _AnalysisPageState extends State<AnalysisPage> {
   @override
   void initState() {
@@ -40,29 +62,33 @@ class _AnalysisPageState extends State<AnalysisPage> {
               // Camera preview area
               Expanded(
                 flex: 3,
-                child: Container(
-                  width: double.infinity,
-                  color: Colors.black,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Camera preview or placeholder
-                      if (controller.isCameraInitialized && controller.cameraController != null) ...[
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: CameraPreview(controller.cameraController!),
-                        ),
-                        // Real-time face mesh overlay
-                        if (controller.currentLandmarks != null)
-                          Positioned.fill(
-                            child: ClipRRect(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    // Pass preview size to controller for coordinate transform
+                    controller.updatePreviewSize(constraints.biggest);
+                    return Container(
+                      width: double.infinity,
+                      color: Colors.black,
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Camera preview or placeholder
+                          if (controller.isCameraInitialized && controller.cameraController != null) ...[
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: CustomPaint(
-                                painter: FaceMeshPainter(controller.currentLandmarks),
-                              ),
+                              child: _buildAnalysisCameraPreview(controller.cameraController!),
                             ),
-                          ),
-                      ] else if (controller.cameraStatus == CameraStatus.permissionDenied ||
+                            // Real-time face mesh overlay
+                            if (controller.currentLandmarks != null)
+                              Positioned.fill(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: CustomPaint(
+                                    painter: FaceMeshPainter(controller.currentLandmarks),
+                                  ),
+                                ),
+                              ),
+                          ] else if (controller.cameraStatus == CameraStatus.permissionDenied ||
                           controller.cameraStatus == CameraStatus.permissionPermanentlyDenied)
                         _PermissionDeniedWidget(
                           onRetry: () => context.read<AnalysisController>().startAnalysis(),
@@ -109,9 +135,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
                         ),
                     ],
                   ),
+                );
+                  },
                 ),
               ),
-              // Analysis results
               Expanded(
                 flex: 2,
                 child: Container(

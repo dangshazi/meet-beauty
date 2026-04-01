@@ -2,10 +2,11 @@ import 'dart:async';
 
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
-import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
+import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:meet_beauty/shared/config/app_config.dart';
 import 'package:meet_beauty/shared/models/face_landmarks.dart';
 import 'package:meet_beauty/shared/models/face_point.dart';
+import 'package:meet_beauty/shared/utils/mlkit_preview_coordinates.dart';
 
 import 'camera/camera_service.dart';
 import 'facemesh/face_mesh_service.dart';
@@ -137,8 +138,15 @@ class FaceTrackingController extends ChangeNotifier {
 
     if (camera == null) return;
 
-    final inputImage =
-        _faceMeshService.convertCameraImage(image, camera);
+    final ctrl = _cameraService.controller;
+    final deviceOrientation =
+        ctrl?.value.deviceOrientation ?? DeviceOrientation.portraitUp;
+
+    final inputImage = _faceMeshService.convertCameraImage(
+      image,
+      camera,
+      deviceOrientation: deviceOrientation,
+    );
     if (inputImage == null) return;
 
     final detected = await _faceMeshService.detectFace(inputImage);
@@ -165,12 +173,7 @@ class FaceTrackingController extends ChangeNotifier {
   // ── Coordinate transform ──────────────────────────────────────────────────
 
   /// Transform [raw] landmarks from ML Kit image-space to Flutter widget-space.
-  ///
-  /// ML Kit returns coordinates in the camera image's native frame:
-  ///  - For Android: image is often 90° rotated relative to screen
-  ///  - For front cameras: image is mirrored on the X axis
-  ///
-  /// We produce widget-space coordinates so [CustomPainter] can draw directly.
+  /// Same pipeline as [AnalysisController] (official ML Kit translator + cover).
   FaceLandmarks _transformLandmarks(
     FaceLandmarks raw,
     Size imageSize,
@@ -179,11 +182,35 @@ class FaceTrackingController extends ChangeNotifier {
     final widgetSize = _previewWidgetSize;
     if (widgetSize == null) return raw;
 
-    final isFront = camera.lensDirection == CameraLensDirection.front;
-    final rotation = _resolveRotation(camera.sensorOrientation);
+    final ctrl = _cameraService.controller;
+    final deviceOrientation =
+        ctrl?.value.deviceOrientation ?? DeviceOrientation.portraitUp;
+    final rotation = inputImageRotationForCamera(camera, deviceOrientation);
 
-    Offset transform(FacePoint p) =>
-        _imageToWidget(p, imageSize, widgetSize, rotation, isFront);
+    final preview = ctrl?.value.previewSize;
+    final Size portraitPreview;
+    final bool useCover;
+    if (preview != null && preview.width > 0 && preview.height > 0) {
+      portraitPreview = Size(preview.height, preview.width);
+      useCover = true;
+    } else {
+      portraitPreview = widgetSize;
+      useCover = false;
+    }
+
+    Offset transform(FacePoint p) {
+      final inPortrait = translateMlKitPointToCanvas(
+        p,
+        portraitPreview,
+        imageSize,
+        rotation,
+        camera.lensDirection,
+      );
+      if (useCover) {
+        return applyBoxFitCoverToPoint(inPortrait, portraitPreview, widgetSize);
+      }
+      return inPortrait;
+    }
 
     Rect transformRect(Rect r) {
       final tl = transform(FacePoint(x: r.left, y: r.top));
@@ -213,73 +240,6 @@ class FaceTrackingController extends ChangeNotifier {
       headAngleY: raw.headAngleY,
       headAngleZ: raw.headAngleZ,
     );
-  }
-
-  /// Convert a single [FacePoint] from image coordinates to widget coordinates.
-  Offset _imageToWidget(
-    FacePoint p,
-    Size imageSize,
-    Size widgetSize,
-    InputImageRotation rotation,
-    bool isFrontCamera,
-  ) {
-    double x = p.x;
-    double y = p.y;
-
-    // Step 1 – rotate to match screen orientation.
-    // After this step, (rotW, rotH) are the effective image dimensions.
-    double rotW, rotH;
-    switch (rotation) {
-      case InputImageRotation.rotation90deg:
-        // (x, y) in rotated image → (imageH - y, x)
-        final tmp = x;
-        x = imageSize.height - y;
-        y = tmp;
-        rotW = imageSize.height;
-        rotH = imageSize.width;
-        break;
-      case InputImageRotation.rotation270deg:
-        // (x, y) in rotated image → (y, imageW - x)
-        final tmp = y;
-        y = imageSize.width - x;
-        x = tmp;
-        rotW = imageSize.height;
-        rotH = imageSize.width;
-        break;
-      case InputImageRotation.rotation180deg:
-        x = imageSize.width - x;
-        y = imageSize.height - y;
-        rotW = imageSize.width;
-        rotH = imageSize.height;
-        break;
-      default:
-        rotW = imageSize.width;
-        rotH = imageSize.height;
-    }
-
-    // Step 2 – scale to widget size.
-    x = x * widgetSize.width / rotW;
-    y = y * widgetSize.height / rotH;
-
-    // Step 3 – mirror horizontally for front cameras (selfie view).
-    if (isFrontCamera) {
-      x = widgetSize.width - x;
-    }
-
-    return Offset(x, y);
-  }
-
-  InputImageRotation _resolveRotation(int sensorOrientation) {
-    switch (sensorOrientation) {
-      case 90:
-        return InputImageRotation.rotation90deg;
-      case 180:
-        return InputImageRotation.rotation180deg;
-      case 270:
-        return InputImageRotation.rotation270deg;
-      default:
-        return InputImageRotation.rotation0deg;
-    }
   }
 
   FacePoint _toFacePoint(Offset o) => FacePoint(x: o.dx, y: o.dy);
