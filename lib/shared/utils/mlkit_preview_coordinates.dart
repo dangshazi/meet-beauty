@@ -8,6 +8,50 @@ import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 
 import 'package:meet_beauty/shared/models/face_point.dart';
 
+/// Logical size of the analysis frame after applying [rotation] (swap axes for 90°/270°).
+Size rotatedImageSizeForAnalysis(Size imageSize, InputImageRotation rotation) {
+  final r90 = rotation == InputImageRotation.rotation90deg;
+  final r270 = rotation == InputImageRotation.rotation270deg;
+  if (r90 || r270) {
+    return Size(imageSize.height, imageSize.width);
+  }
+  return imageSize;
+}
+
+/// Maps one ML Kit landmark to overlay coordinates for [widgetSize].
+///
+/// By default uses [BoxFit.cover] math ([applyBoxFitCoverToPoint]) after
+/// [translateMlKitPointToCanvas], matching a preview built with FittedBox cover
+/// over a portrait [SizedBox] from the analysis stream aspect ratio.
+///
+/// When [useStretchToFill] is true (no reliable [previewSize] / plain stretched
+/// preview), scales x/y independently to fill [widgetSize].
+Offset mapLandmarkToOverlay(
+  FacePoint p, {
+  required Size imageSize,
+  required Size widgetSize,
+  required InputImageRotation rotation,
+  required CameraLensDirection lens,
+  bool useStretchToFill = false,
+}) {
+  final rotated = rotatedImageSizeForAnalysis(imageSize, rotation);
+  final translated = translateMlKitPointToCanvas(
+    p,
+    rotated,
+    imageSize,
+    rotation,
+    lens,
+  );
+  if (useStretchToFill) {
+    if (rotated.width <= 0 || rotated.height <= 0) return translated;
+    return Offset(
+      translated.dx * widgetSize.width / rotated.width,
+      translated.dy * widgetSize.height / rotated.height,
+    );
+  }
+  return applyBoxFitCoverToPoint(translated, rotated, widgetSize);
+}
+
 /// Maps [CameraDescription.sensorOrientation] to [InputImageRotation] (iOS path).
 InputImageRotation sensorOrientationToInputRotation(int sensorOrientation) {
   switch (sensorOrientation) {

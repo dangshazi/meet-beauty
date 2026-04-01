@@ -1,4 +1,5 @@
 import 'package:camera/camera.dart';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show DeviceOrientation;
 import 'package:meet_beauty/services/camera/camera_service.dart';
@@ -34,6 +35,8 @@ class AnalysisController extends ChangeNotifier {
   /// Preview widget dimensions — set by the UI layer for coordinate scaling.
   Size? _previewWidgetSize;
 
+  DateTime? _lastFaceMeshDebugLogAt;
+
   // Getters
   bool get isCameraInitialized => _cameraService.isInitialized;
   bool get isAnalyzing => _isAnalyzing;
@@ -44,6 +47,10 @@ class AnalysisController extends ChangeNotifier {
   String? get cameraErrorMessage => _cameraService.errorMessage;
   CameraController? get cameraController => _cameraService.controller;
   FaceLandmarks? get currentLandmarks => _currentLandmarks;
+
+  /// The lens direction of the camera in use (front/back).
+  CameraLensDirection get cameraLensDirection =>
+      _frontCamera?.lensDirection ?? CameraLensDirection.front;
 
   /// Call this from the UI once the preview widget size is known.
   void updatePreviewSize(Size size) {
@@ -172,29 +179,35 @@ class AnalysisController extends ChangeNotifier {
     final rotation = inputImageRotationForCamera(camera, deviceOrientation);
 
     final preview = ctrl?.value.previewSize;
-    final Size portraitPreview;
-    final bool useCover;
-    if (preview != null && preview.width > 0 && preview.height > 0) {
-      portraitPreview = Size(preview.height, preview.width);
-      useCover = true;
-    } else {
-      portraitPreview = widgetSize;
-      useCover = false;
+    final useStretchToFill = preview == null ||
+        preview.width <= 0 ||
+        preview.height <= 0;
+
+    final rotatedImageSize = rotatedImageSizeForAnalysis(imageSize, rotation);
+
+    if (kDebugMode && raw.faceContour.isNotEmpty) {
+      final now = DateTime.now();
+      if (_lastFaceMeshDebugLogAt == null ||
+          now.difference(_lastFaceMeshDebugLogAt!).inMilliseconds >= 500) {
+        _lastFaceMeshDebugLogAt = now;
+        final s = raw.faceContour.first;
+        debugPrint(
+          '[FaceMesh] imageSize=$imageSize rotatedImageSize=$rotatedImageSize '
+          'widgetSize=$widgetSize rotation=$rotation lens=${camera.lensDirection} '
+          'preview=$preview stretch=$useStretchToFill '
+          'sample=(${s.x.toStringAsFixed(1)}, ${s.y.toStringAsFixed(1)})',
+        );
+      }
     }
 
-    Offset transform(FacePoint p) {
-      final inPortrait = translateMlKitPointToCanvas(
-        p,
-        portraitPreview,
-        imageSize,
-        rotation,
-        camera.lensDirection,
-      );
-      if (useCover) {
-        return applyBoxFitCoverToPoint(inPortrait, portraitPreview, widgetSize);
-      }
-      return inPortrait;
-    }
+    Offset transform(FacePoint p) => mapLandmarkToOverlay(
+          p,
+          imageSize: imageSize,
+          widgetSize: widgetSize,
+          rotation: rotation,
+          lens: camera.lensDirection,
+          useStretchToFill: useStretchToFill,
+        );
 
     Rect transformRect(Rect r) {
       final tl = transform(FacePoint(x: r.left, y: r.top));

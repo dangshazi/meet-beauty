@@ -136,20 +136,48 @@ class _CameraSection extends StatelessWidget {
           );
         });
 
+        final front =
+            tracker.cameraLensDirection == CameraLensDirection.front;
+
         return Stack(
           fit: StackFit.expand,
           children: [
-            _buildCameraPreview(context),
-
-            if (tutorial.currentStep != null)
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _ArOverlayPainter(
-                    step: tutorial.currentStep!,
-                    landmarks: tracker.landmarks,
-                  ),
-                ),
-              ),
+            Positioned.fill(
+              child: front
+                  ? Transform.flip(
+                      flipX: true,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          _buildCameraPreview(context),
+                          if (tutorial.currentStep != null)
+                            Positioned.fill(
+                              child: CustomPaint(
+                                painter: _ArOverlayPainter(
+                                  step: tutorial.currentStep!,
+                                  landmarks: tracker.landmarks,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    )
+                  : Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        _buildCameraPreview(context),
+                        if (tutorial.currentStep != null)
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: _ArOverlayPainter(
+                                step: tutorial.currentStep!,
+                                landmarks: tracker.landmarks,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
 
             if (tracker.isTracking && !tracker.isFaceDetected)
               const Positioned(
@@ -201,15 +229,20 @@ class _CameraSection extends StatelessWidget {
       );
     }
 
+    final previewSize = cameraController.value.previewSize;
+    final preview = CameraPreview(cameraController);
+    if (previewSize == null) {
+      return preview;
+    }
     return ClipRect(
       child: OverflowBox(
         alignment: Alignment.center,
         child: FittedBox(
           fit: BoxFit.cover,
           child: SizedBox(
-            width: cameraController.value.previewSize!.height,
-            height: cameraController.value.previewSize!.width,
-            child: CameraPreview(cameraController),
+            width: previewSize.height,
+            height: previewSize.width,
+            child: preview,
           ),
         ),
       ),

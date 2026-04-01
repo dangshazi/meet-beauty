@@ -14,12 +14,13 @@ class AnalysisPage extends StatefulWidget {
   State<AnalysisPage> createState() => _AnalysisPageState();
 }
 
-/// Matches [TutorialPage] preview: portrait aspect + [BoxFit.cover] so overlay
-/// coordinates from [AnalysisController] stay aligned on all screen sizes.
-Widget _buildAnalysisCameraPreview(CameraController cameraController) {
+/// Camera preview with portrait [BoxFit.cover]. Does **not** mirror; front
+/// mirroring wraps preview + overlay together in [AnalysisPage].
+Widget _buildCameraPreviewOnly(CameraController cameraController) {
   final previewSize = cameraController.value.previewSize;
+  final preview = CameraPreview(cameraController);
   if (previewSize == null) {
-    return CameraPreview(cameraController);
+    return preview;
   }
   return ClipRect(
     child: OverflowBox(
@@ -29,7 +30,7 @@ Widget _buildAnalysisCameraPreview(CameraController cameraController) {
         child: SizedBox(
           width: previewSize.height,
           height: previewSize.width,
-          child: CameraPreview(cameraController),
+          child: preview,
         ),
       ),
     ),
@@ -76,18 +77,47 @@ class _AnalysisPageState extends State<AnalysisPage> {
                           if (controller.isCameraInitialized && controller.cameraController != null) ...[
                             ClipRRect(
                               borderRadius: BorderRadius.circular(16),
-                              child: _buildAnalysisCameraPreview(controller.cameraController!),
+                              child:
+                                  controller.cameraLensDirection ==
+                                      CameraLensDirection.front
+                                  ? Transform.flip(
+                                      flipX: true,
+                                      child: Stack(
+                                        fit: StackFit.expand,
+                                        children: [
+                                          _buildCameraPreviewOnly(
+                                            controller.cameraController!,
+                                          ),
+                                          if (controller.currentLandmarks !=
+                                              null)
+                                            Positioned.fill(
+                                              child: CustomPaint(
+                                                painter: FaceMeshPainter(
+                                                  controller.currentLandmarks,
+                                                ),
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    )
+                                  : Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        _buildCameraPreviewOnly(
+                                          controller.cameraController!,
+                                        ),
+                                        if (controller.currentLandmarks !=
+                                            null)
+                                          Positioned.fill(
+                                            child: CustomPaint(
+                                              painter: FaceMeshPainter(
+                                                controller.currentLandmarks,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
                             ),
-                            // Real-time face mesh overlay
-                            if (controller.currentLandmarks != null)
-                              Positioned.fill(
-                                child: ClipRRect(
-                                  borderRadius: BorderRadius.circular(16),
-                                  child: CustomPaint(
-                                    painter: FaceMeshPainter(controller.currentLandmarks),
-                                  ),
-                                ),
-                              ),
                           ] else if (controller.cameraStatus == CameraStatus.permissionDenied ||
                           controller.cameraStatus == CameraStatus.permissionPermanentlyDenied)
                         _PermissionDeniedWidget(

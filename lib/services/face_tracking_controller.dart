@@ -59,6 +59,19 @@ class FaceTrackingController extends ChangeNotifier {
   /// Expose the underlying [CameraController] so [CameraPreview] can use it.
   CameraController? get cameraController => _cameraService.controller;
 
+  /// Lens used for tracking (same resolution as [startTracking] / frame pipeline).
+  CameraLensDirection get cameraLensDirection {
+    if (_cameraService.cameras.isEmpty) {
+      return CameraLensDirection.front;
+    }
+    return _cameraService.cameras
+        .firstWhere(
+          (c) => c.lensDirection == CameraLensDirection.front,
+          orElse: () => _cameraService.cameras.first,
+        )
+        .lensDirection;
+  }
+
   // ── Lifecycle ─────────────────────────────────────────────────────────────
 
   /// Initialise the camera and start the detection pipeline.
@@ -188,29 +201,18 @@ class FaceTrackingController extends ChangeNotifier {
     final rotation = inputImageRotationForCamera(camera, deviceOrientation);
 
     final preview = ctrl?.value.previewSize;
-    final Size portraitPreview;
-    final bool useCover;
-    if (preview != null && preview.width > 0 && preview.height > 0) {
-      portraitPreview = Size(preview.height, preview.width);
-      useCover = true;
-    } else {
-      portraitPreview = widgetSize;
-      useCover = false;
-    }
+    final useStretchToFill = preview == null ||
+        preview.width <= 0 ||
+        preview.height <= 0;
 
-    Offset transform(FacePoint p) {
-      final inPortrait = translateMlKitPointToCanvas(
-        p,
-        portraitPreview,
-        imageSize,
-        rotation,
-        camera.lensDirection,
-      );
-      if (useCover) {
-        return applyBoxFitCoverToPoint(inPortrait, portraitPreview, widgetSize);
-      }
-      return inPortrait;
-    }
+    Offset transform(FacePoint p) => mapLandmarkToOverlay(
+          p,
+          imageSize: imageSize,
+          widgetSize: widgetSize,
+          rotation: rotation,
+          lens: camera.lensDirection,
+          useStretchToFill: useStretchToFill,
+        );
 
     Rect transformRect(Rect r) {
       final tl = transform(FacePoint(x: r.left, y: r.top));
