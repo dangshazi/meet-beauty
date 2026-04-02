@@ -78,10 +78,10 @@ void main() {
       await tester.tap(find.text('完成教学'));
       await _settle(tester);
 
-      // Result page
-      expect(find.text('out of 100'), findsOneWidget);
-      expect(find.text('Practice Again'), findsOneWidget);
-      expect(find.text('Home'), findsOneWidget);
+      // Result page（与 result_page 中文文案一致）
+      expect(find.text('满分 100'), findsOneWidget);
+      expect(find.text('再练一次'), findsOneWidget);
+      expect(find.text('返回首页'), findsOneWidget);
     });
 
     testWidgets('步骤进度显示 1 / 3', (tester) async {
@@ -93,7 +93,7 @@ void main() {
       expect(find.text('1 / 3'), findsOneWidget);
     });
 
-    testWidgets('结果页点击 Home 返回首页', (tester) async {
+    testWidgets('结果页点击返回首页', (tester) async {
       await tester.pumpWidget(buildTestApp());
       await tester.pump(const Duration(seconds: 2));
 
@@ -106,13 +106,13 @@ void main() {
       await tester.tap(find.text('完成教学'));
       await _settle(tester);
 
-      await tester.tap(find.text('Home'));
+      await tester.tap(find.text('返回首页'));
       await _settle(tester);
 
       expect(find.text('Meet Beauty'), findsOneWidget);
     });
 
-    testWidgets('结果页点击 Practice Again 重新进入教学', (tester) async {
+    testWidgets('结果页点击再练一次重新进入教学', (tester) async {
       await tester.pumpWidget(buildTestApp());
       await tester.pump(const Duration(seconds: 2));
 
@@ -125,7 +125,7 @@ void main() {
       await tester.tap(find.text('完成教学'));
       await _settle(tester);
 
-      await tester.tap(find.text('Practice Again'));
+      await tester.tap(find.text('再练一次'));
       await _settle(tester);
 
       expect(find.text('Apply Lip Color'), findsOneWidget);

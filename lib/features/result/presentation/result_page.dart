@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/app/theme/app_colors.dart';
 import 'package:meet_beauty/features/result/application/scoring_controller.dart';
 import 'package:meet_beauty/features/tutorial/application/tutorial_controller.dart';
+import 'package:meet_beauty/l10n/app_localizations.dart';
 import 'package:provider/provider.dart';
 
 class ResultPage extends StatelessWidget {
@@ -10,6 +11,7 @@ class ResultPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: SafeArea(
         child: Padding(
@@ -53,7 +55,7 @@ class ResultPage extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'out of 100',
+                        l10n.resultOutOf,
                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                               color: AppColors.textSecondary,
                             ),
@@ -115,9 +117,10 @@ class ResultPage extends StatelessWidget {
                 },
               ),
               const Spacer(flex: 2),
-              // Tutorial stats
-              Consumer<TutorialController>(
-                builder: (context, tutorial, child) {
+              Consumer2<TutorialController, ScoringController>(
+                builder: (context, tutorial, scoring, child) {
+                  final l10n = AppLocalizations.of(context)!;
+                  final details = scoring.scoreResult?.details;
                   return Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
@@ -128,13 +131,18 @@ class ResultPage extends StatelessWidget {
                       mainAxisAlignment: MainAxisAlignment.spaceAround,
                       children: [
                         _StatItem(
-                          label: 'Steps Completed',
+                          label: l10n.resultStepsCompleted,
                           value: '${tutorial.completedStepsCount}/${tutorial.totalSteps}',
                         ),
                         _StatItem(
-                          label: 'Time',
+                          label: l10n.resultDuration,
                           value: _formatDuration(tutorial.tutorialDuration),
                         ),
+                        if (details != null && details['faceDetectionRate'] != null)
+                          _StatItem(
+                            label: l10n.resultFaceTracking,
+                            value: '${details['faceDetectionRate']}%',
+                          ),
                       ],
                     ),
                   );
@@ -147,7 +155,7 @@ class ResultPage extends StatelessWidget {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () => context.go('/'),
-                      child: const Text('Home'),
+                      child: Text(l10n.resultBackHome),
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -155,7 +163,7 @@ class ResultPage extends StatelessWidget {
                     flex: 2,
                     child: ElevatedButton(
                       onPressed: () => context.go('/tutorial'),
-                      child: const Text('Practice Again'),
+                      child: Text(l10n.resultPracticeAgain),
                     ),
                   ),
                 ],

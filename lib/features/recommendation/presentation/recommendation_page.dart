@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/app/theme/app_colors.dart';
 import 'package:meet_beauty/features/recommendation/application/recommendation_controller.dart';
+import 'package:meet_beauty/l10n/app_localizations.dart';
 import 'package:meet_beauty/shared/models/face_feature_result.dart';
 import 'package:meet_beauty/shared/models/makeup_profile.dart';
 import 'package:provider/provider.dart';
@@ -28,9 +29,10 @@ class _RecommendationView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Your Recommendations'),
+        title: Text(l10n.recTitle),
         elevation: 0,
       ),
       body: Consumer<RecommendationController>(
@@ -42,8 +44,8 @@ class _RecommendationView extends StatelessWidget {
           }
 
           if (controller.recommendations.isEmpty) {
-            return const Center(
-              child: Text('No recommendations available'),
+            return Center(
+              child: Text(l10n.recNoData),
             );
           }
 
@@ -83,9 +85,9 @@ class _RecommendationView extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                       ),
                     ),
-                    child: const Text(
-                      'Start Learning',
-                      style: TextStyle(
+                    child: Text(
+                      l10n.recStartLearning,
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                       ),
@@ -108,6 +110,7 @@ class _AnalysisSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(20),
@@ -127,7 +130,7 @@ class _AnalysisSummary extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           Text(
-            'Based on Your Features',
+            l10n.recBasedOnFeatures,
             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.bold,
                 ),
@@ -169,6 +172,7 @@ class _RecommendationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Card(
       elevation: isSelected ? 4 : 1,
       margin: const EdgeInsets.only(bottom: 12),
@@ -301,7 +305,7 @@ class _RecommendationCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 4),
                   Text(
-                    '${profile.tutorialSteps.length} steps',
+                    l10n.recSteps(profile.tutorialSteps.length),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: AppColors.textSecondary,
                         ),

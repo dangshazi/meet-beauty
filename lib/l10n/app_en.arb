@@ -1,0 +1,76 @@
+{
+  "@@locale": "en",
+
+  "tutorialPreviousStep": "Previous",
+  "tutorialNextStep": "Next",
+  "tutorialComplete": "Finish Tutorial",
+  "tutorialFaceHint": "Please align your face with the screen",
+  "tutorialCameraError": "Camera initialization failed, please retry",
+  "tutorialCameraErrorDefault": "Camera initialization failed, please retry",
+
+  "permissionRequired": "Camera permission required",
+  "permissionDescription": "AR makeup tutorial needs the front camera to detect your face. Please grant camera permission to continue.",
+  "permissionOpenSettings": "Open Settings",
+  "permissionRetry": "Retry",
+
+  "resultOutOf": "Out of 100",
+  "resultStepsCompleted": "Steps Completed",
+  "resultDuration": "Duration",
+  "resultFaceTracking": "Face Tracking",
+  "resultBackHome": "Back to Home",
+  "resultPracticeAgain": "Practice Again",
+
+  "scoreExcellent": "Excellent! Your makeup looks amazing!",
+  "scoreGood": "Good job! Keep practicing and you'll get even better.",
+  "scoreGoodSuggestion": "Try completing all steps for better results.",
+  "scoreNeedsWork": "Keep practicing! Practice makes perfect.",
+  "scoreNeedsWorkSuggestion": "Slow down and follow each step carefully.",
+  "scoreTrackingTip": "Keep your face toward the camera for better guidance.",
+
+  "settingsTitle": "Settings",
+  "settingsLanguage": "Language",
+  "settingsLanguageSystem": "System Default",
+  "settingsLanguageEn": "English",
+  "settingsLanguageZh": "中文",
+
+  "homeTitle": "Meet Beauty",
+  "homeSubtitle": "AI Makeup Coach",
+  "homeFeatureAnalysis": "Face Analysis",
+  "homeFeatureAnalysisDesc": "Get personalized makeup recommendations",
+  "homeFeatureTutorial": "AR Tutorial",
+  "homeFeatureTutorialDesc": "Learn with real-time AR guidance",
+  "homeFeatureScoring": "Smart Scoring",
+  "homeFeatureScoringDesc": "Track your progress with instant feedback",
+  "homeStartLearning": "Start Learning",
+  "homeChooseStyle": "Choose a Tutorial Style",
+
+  "analysisTitle": "Face Analysis",
+  "analysisInitializing": "Initializing camera...",
+  "analysisAnalyzing": "Analyzing your face...",
+  "analysisYourFeatures": "Your Features",
+  "analysisFaceShape": "Face Shape",
+  "analysisSkinTone": "Skin Tone",
+  "analysisLipType": "Lip Type",
+  "analysisFaceDetected": "Face detected! Tap \"Capture & Analyze\" to continue.",
+  "analysisPositionFace": "Position your face in the camera view",
+  "analysisGetRecommendations": "Get Recommendations",
+  "analysisAnalyzingBtn": "Analyzing...",
+  "analysisCaptureAnalyze": "Capture & Analyze",
+  "analysisCameraError": "Camera Error",
+  "analysisRetry": "Retry",
+  "analysisCameraPermission": "Camera permission required",
+  "analysisGrantPermission": "Grant Permission",
+
+  "recTitle": "Your Recommendations",
+  "recNoData": "No recommendations available",
+  "recStartLearning": "Start Learning",
+  "recBasedOnFeatures": "Based on Your Features",
+  "@recSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recSteps": "{count, plural, =1{1 step} other{{count} steps}}"
+}

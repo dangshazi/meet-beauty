@@ -244,6 +244,8 @@ class RecommendationController extends ChangeNotifier {
               instruction:
                   'Apply contour along your jawline and temples using light strokes',
               targetRegion: TargetRegion.forehead,
+              overlayStyle: OverlayStyle(
+                  color: Color(0xFF8D6E63), opacity: 0.25),
               order: 1,
             ),
             const TutorialStep(
@@ -303,6 +305,8 @@ class RecommendationController extends ChangeNotifier {
               title: 'Eye Highlight',
               instruction: 'Apply a sheer shimmer on the inner corners',
               targetRegion: TargetRegion.leftEye,
+              overlayStyle: OverlayStyle(
+                  color: Color(0xFFE0C8A8), opacity: 0.3),
               order: 3,
             ),
           ],

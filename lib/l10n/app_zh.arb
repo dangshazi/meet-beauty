@@ -1,0 +1,76 @@
+{
+  "@@locale": "zh",
+
+  "tutorialPreviousStep": "上一步",
+  "tutorialNextStep": "下一步",
+  "tutorialComplete": "完成教学",
+  "tutorialFaceHint": "请将面部对准屏幕",
+  "tutorialCameraError": "相机初始化失败，请重试",
+  "tutorialCameraErrorDefault": "相机初始化失败，请重试",
+
+  "permissionRequired": "需要相机权限",
+  "permissionDescription": "AR 化妆教学需要使用前置摄像头来检测面部区域。请授权相机权限后继续。",
+  "permissionOpenSettings": "前往设置开启",
+  "permissionRetry": "重试",
+
+  "resultOutOf": "满分 100",
+  "resultStepsCompleted": "步骤完成",
+  "resultDuration": "用时",
+  "resultFaceTracking": "面部追踪",
+  "resultBackHome": "返回首页",
+  "resultPracticeAgain": "再练一次",
+
+  "scoreExcellent": "太棒了！你的妆容效果非常出色！",
+  "scoreGood": "做得不错！继续加油你会越来越好。",
+  "scoreGoodSuggestion": "尝试完成所有步骤以获得更好的效果。",
+  "scoreNeedsWork": "继续练习吧！熟能生巧。",
+  "scoreNeedsWorkSuggestion": "请放慢节奏，认真对待每个步骤。",
+  "scoreTrackingTip": "请保持面部正对镜头，以获得更好的引导效果。",
+
+  "settingsTitle": "设置",
+  "settingsLanguage": "语言",
+  "settingsLanguageSystem": "跟随系统",
+  "settingsLanguageEn": "English",
+  "settingsLanguageZh": "中文",
+
+  "homeTitle": "Meet Beauty",
+  "homeSubtitle": "AI 化妆教练",
+  "homeFeatureAnalysis": "面部分析",
+  "homeFeatureAnalysisDesc": "获取个性化化妆建议",
+  "homeFeatureTutorial": "AR 教学",
+  "homeFeatureTutorialDesc": "实时 AR 引导学习",
+  "homeFeatureScoring": "智能评分",
+  "homeFeatureScoringDesc": "即时反馈追踪进度",
+  "homeStartLearning": "开始学习",
+  "homeChooseStyle": "选择教学风格",
+
+  "analysisTitle": "面部分析",
+  "analysisInitializing": "正在初始化摄像头...",
+  "analysisAnalyzing": "正在分析面部...",
+  "analysisYourFeatures": "你的特征",
+  "analysisFaceShape": "脸型",
+  "analysisSkinTone": "肤色",
+  "analysisLipType": "唇形",
+  "analysisFaceDetected": "检测到面部！点击「拍摄并分析」继续。",
+  "analysisPositionFace": "请将面部对准摄像头",
+  "analysisGetRecommendations": "获取建议",
+  "analysisAnalyzingBtn": "分析中...",
+  "analysisCaptureAnalyze": "拍摄并分析",
+  "analysisCameraError": "摄像头错误",
+  "analysisRetry": "重试",
+  "analysisCameraPermission": "需要相机权限",
+  "analysisGrantPermission": "授予权限",
+
+  "recTitle": "你的推荐",
+  "recNoData": "暂无推荐",
+  "recStartLearning": "开始学习",
+  "recBasedOnFeatures": "基于你的面部特征",
+  "@recSteps": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "recSteps": "{count} 步"
+}

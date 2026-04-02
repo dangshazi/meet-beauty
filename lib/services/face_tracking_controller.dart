@@ -48,6 +48,20 @@ class FaceTrackingController extends ChangeNotifier {
   /// Preview widget dimensions — set by the UI layer for coordinate scaling.
   Size? _previewWidgetSize;
 
+  // ── Face detection statistics (used by scoring) ────────────────────────────
+
+  int _totalFramesProcessed = 0;
+  int _faceDetectedFrames = 0;
+
+  /// Ratio of frames where a face was detected vs total processed frames.
+  ///
+  /// Returns `0.0` when no frames have been processed in this session (strict:
+  /// do not inflate the tutorial score before any ML Kit work ran).
+  double get faceDetectionRate =>
+      _totalFramesProcessed == 0
+          ? 0.0
+          : _faceDetectedFrames / _totalFramesProcessed;
+
   // ── Public getters ────────────────────────────────────────────────────────
 
   TrackingState get state => _state;
@@ -85,6 +99,10 @@ class FaceTrackingController extends ChangeNotifier {
     _errorMessage = null;
 
     try {
+      // Fresh stats for each tutorial / camera session (per-round scoring).
+      _totalFramesProcessed = 0;
+      _faceDetectedFrames = 0;
+
       await _cameraService.initialize();
       _cameraService.startImageStream(_onCameraFrame);
       _setState(TrackingState.tracking);
@@ -112,6 +130,10 @@ class FaceTrackingController extends ChangeNotifier {
   }
 
   /// Fully stop and release all resources.
+  ///
+  /// Note: [faceDetectionRate] remains readable after stop so that
+  /// [ScoringController] can read this session's rate; counters reset on the
+  /// next successful [startTracking].
   void stopTracking() {
     _cameraService.stopImageStream();
     _cameraService.dispose();
@@ -163,15 +185,17 @@ class FaceTrackingController extends ChangeNotifier {
     if (inputImage == null) return;
 
     final detected = await _faceMeshService.detectFace(inputImage);
+    _totalFramesProcessed++;
 
     if (detected == null) {
-      // Face lost
       if (_landmarks != null) {
         _landmarks = null;
         notifyListeners();
       }
       return;
     }
+
+    _faceDetectedFrames++;
 
     // Apply coordinate transform then EMA smoothing.
     final imageSize =
@@ -220,24 +244,37 @@ class FaceTrackingController extends ChangeNotifier {
       return Rect.fromPoints(tl, br);
     }
 
+    List<FacePoint> tx(List<FacePoint> pts) =>
+        pts.map((p) => _toFacePoint(transform(p))).toList();
+    FacePoint? txPt(FacePoint? p) =>
+        p != null ? _toFacePoint(transform(p)) : null;
+
     return FaceLandmarks(
-      faceContour: raw.faceContour.map((p) => _toFacePoint(transform(p))).toList(),
-      upperLipTop: raw.upperLipTop.map((p) => _toFacePoint(transform(p))).toList(),
-      upperLipBottom:
-          raw.upperLipBottom.map((p) => _toFacePoint(transform(p))).toList(),
-      lowerLipTop:
-          raw.lowerLipTop.map((p) => _toFacePoint(transform(p))).toList(),
-      lowerLipBottom:
-          raw.lowerLipBottom.map((p) => _toFacePoint(transform(p))).toList(),
-      noseBase: raw.noseBase != null
-          ? _toFacePoint(transform(raw.noseBase!))
-          : null,
-      leftEye: raw.leftEye != null
-          ? _toFacePoint(transform(raw.leftEye!))
-          : null,
-      rightEye: raw.rightEye != null
-          ? _toFacePoint(transform(raw.rightEye!))
-          : null,
+      faceContour: tx(raw.faceContour),
+      upperLipTop: tx(raw.upperLipTop),
+      upperLipBottom: tx(raw.upperLipBottom),
+      lowerLipTop: tx(raw.lowerLipTop),
+      lowerLipBottom: tx(raw.lowerLipBottom),
+      leftEyebrowTop: tx(raw.leftEyebrowTop),
+      leftEyebrowBottom: tx(raw.leftEyebrowBottom),
+      rightEyebrowTop: tx(raw.rightEyebrowTop),
+      rightEyebrowBottom: tx(raw.rightEyebrowBottom),
+      leftEyeContour: tx(raw.leftEyeContour),
+      rightEyeContour: tx(raw.rightEyeContour),
+      noseBridge: tx(raw.noseBridge),
+      noseBottom: tx(raw.noseBottom),
+      leftCheekContour: tx(raw.leftCheekContour),
+      rightCheekContour: tx(raw.rightCheekContour),
+      noseBase: txPt(raw.noseBase),
+      leftEye: txPt(raw.leftEye),
+      rightEye: txPt(raw.rightEye),
+      bottomMouth: txPt(raw.bottomMouth),
+      leftMouth: txPt(raw.leftMouth),
+      rightMouth: txPt(raw.rightMouth),
+      leftEar: txPt(raw.leftEar),
+      rightEar: txPt(raw.rightEar),
+      leftCheekLandmark: txPt(raw.leftCheekLandmark),
+      rightCheekLandmark: txPt(raw.rightCheekLandmark),
       boundingBox: transformRect(raw.boundingBox),
       headAngleY: raw.headAngleY,
       headAngleZ: raw.headAngleZ,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/app/theme/app_colors.dart';
 import 'package:meet_beauty/features/analysis/application/analysis_controller.dart';
 import 'package:meet_beauty/features/analysis/presentation/face_mesh_painter.dart';
+import 'package:meet_beauty/l10n/app_localizations.dart';
 import 'package:meet_beauty/services/camera/camera_service.dart';
 import 'package:provider/provider.dart';
 
@@ -48,9 +49,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Face Analysis'),
+        title: Text(l10n.analysisTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => context.go('/'),
@@ -124,22 +126,22 @@ class _AnalysisPageState extends State<AnalysisPage> {
                           onRetry: () => context.read<AnalysisController>().startAnalysis(),
                         )
                       else if (controller.cameraStatus == CameraStatus.error)
-                        _ErrorWidget(
-                          message: controller.errorMessage ?? 'Camera error',
+                        _CameraErrorWidget(
+                          message: controller.errorMessage ?? l10n.analysisCameraError,
                           onRetry: () => context.read<AnalysisController>().startAnalysis(),
                         )
                       else
                         Container(
                           color: Colors.grey[900],
-                          child: const Center(
+                          child: Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                CircularProgressIndicator(color: Colors.white),
-                                SizedBox(height: 16),
+                                const CircularProgressIndicator(color: Colors.white),
+                                const SizedBox(height: 16),
                                 Text(
-                                  'Initializing camera...',
-                                  style: TextStyle(color: Colors.white),
+                                  l10n.analysisInitializing,
+                                  style: const TextStyle(color: Colors.white),
                                 ),
                               ],
                             ),
@@ -149,15 +151,15 @@ class _AnalysisPageState extends State<AnalysisPage> {
                       if (controller.isAnalyzing)
                         Container(
                           color: Colors.black54,
-                          child: const Center(
+                          child: Center(
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                CircularProgressIndicator(color: AppColors.primary),
-                                SizedBox(height: 16),
+                                const CircularProgressIndicator(color: AppColors.primary),
+                                const SizedBox(height: 16),
                                 Text(
-                                  'Analyzing your face...',
-                                  style: TextStyle(color: Colors.white),
+                                  l10n.analysisAnalyzing,
+                                  style: const TextStyle(color: Colors.white),
                                 ),
                               ],
                             ),
@@ -178,34 +180,34 @@ class _AnalysisPageState extends State<AnalysisPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Your Features',
+                        l10n.analysisYourFeatures,
                         style: Theme.of(context).textTheme.headlineMedium,
                       ),
                       const SizedBox(height: 16),
                       if (controller.featureResult != null) ...[
                         _FeatureBadge(
-                          label: 'Face Shape',
+                          label: l10n.analysisFaceShape,
                           value: controller.featureResult!.faceShape.name,
                         ),
                         const SizedBox(height: 8),
                         _FeatureBadge(
-                          label: 'Skin Tone',
+                          label: l10n.analysisSkinTone,
                           value: controller.featureResult!.skinTone.name,
                         ),
                         const SizedBox(height: 8),
                         _FeatureBadge(
-                          label: 'Lip Type',
+                          label: l10n.analysisLipType,
                           value: controller.featureResult!.lipType.name,
                         ),
                       ] else if (controller.currentLandmarks != null)
                         Text(
-                          'Face detected! Tap "Capture & Analyze" to continue.',
+                          l10n.analysisFaceDetected,
                           style: const TextStyle(color: AppColors.textSecondary),
                         )
                       else
-                        const Text(
-                          'Position your face in the camera view',
-                          style: TextStyle(color: AppColors.textSecondary),
+                        Text(
+                          l10n.analysisPositionFace,
+                          style: const TextStyle(color: AppColors.textSecondary),
                         ),
                       const Spacer(),
                       SizedBox(
@@ -218,10 +220,10 @@ class _AnalysisPageState extends State<AnalysisPage> {
                                   : null,
                           child: Text(
                             controller.isAnalysisComplete
-                                ? 'Get Recommendations'
+                                ? l10n.analysisGetRecommendations
                                 : controller.isAnalyzing
-                                    ? 'Analyzing...'
-                                    : 'Capture & Analyze',
+                                    ? l10n.analysisAnalyzingBtn
+                                    : l10n.analysisCaptureAnalyze,
                           ),
                         ),
                       ),
@@ -277,14 +279,15 @@ class _FeatureBadge extends StatelessWidget {
   }
 }
 
-class _ErrorWidget extends StatelessWidget {
+class _CameraErrorWidget extends StatelessWidget {
   final String message;
   final VoidCallback onRetry;
 
-  const _ErrorWidget({required this.message, required this.onRetry});
+  const _CameraErrorWidget({required this.message, required this.onRetry});
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Padding(
       padding: const EdgeInsets.all(32),
       child: Column(
@@ -293,7 +296,7 @@ class _ErrorWidget extends StatelessWidget {
           const Icon(Icons.error_outline, size: 64, color: Colors.redAccent),
           const SizedBox(height: 16),
           Text(
-            'Camera Error',
+            l10n.analysisCameraError,
             style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
@@ -307,7 +310,7 @@ class _ErrorWidget extends StatelessWidget {
           const SizedBox(height: 24),
           ElevatedButton(
             onPressed: onRetry,
-            child: const Text('Retry'),
+            child: Text(l10n.analysisRetry),
           ),
         ],
       ),
@@ -322,19 +325,20 @@ class _PermissionDeniedWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.white54),
         const SizedBox(height: 16),
-        const Text(
-          'Camera permission required',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+        Text(
+          l10n.analysisCameraPermission,
+          style: const TextStyle(color: Colors.white, fontSize: 16),
         ),
         const SizedBox(height: 24),
         ElevatedButton(
           onPressed: onRetry,
-          child: const Text('Grant Permission'),
+          child: Text(l10n.analysisGrantPermission),
         ),
       ],
     );

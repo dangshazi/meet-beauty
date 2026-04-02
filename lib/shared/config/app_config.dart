@@ -5,6 +5,7 @@ import 'package:meet_beauty/features/tutorial/application/tutorial_controller.da
 import 'package:meet_beauty/features/recommendation/application/recommendation_controller.dart';
 import 'package:meet_beauty/features/result/application/scoring_controller.dart';
 import 'package:meet_beauty/services/face_tracking_controller.dart';
+import 'package:meet_beauty/shared/providers/locale_provider.dart';
 
 class AppConfig {
   AppConfig._();
@@ -24,12 +25,9 @@ class AppConfig {
   static const double minFaceConfidence = 0.5;
 
   /// Providers for state management.
-  ///
-  /// Each provider specifies its concrete type explicitly so that
-  /// `context.read<AnalysisController>()` etc. resolve correctly.
-  /// Using `SingleChildWidget` avoids the generic-erasure problem of
-  /// `List<ChangeNotifierProvider<ChangeNotifier>>`.
   static final List<SingleChildWidget> providers = [
+    ChangeNotifierProvider<LocaleProvider>(
+        create: (_) => LocaleProvider()),
     ChangeNotifierProvider<AnalysisController>(
         create: (_) => AnalysisController()),
     ChangeNotifierProvider<TutorialController>(

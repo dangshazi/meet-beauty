@@ -60,6 +60,12 @@ class MockFaceTrackingController extends FaceTrackingController {
   @override
   bool get isFaceDetected => _fakeLandmarks != null;
 
+  /// Parent counters stay at 0 because [startTracking] does not run the real
+  /// camera stream. Expose a stable rate so [ScoringController] matches
+  /// integration-test expectations (face present vs absent).
+  @override
+  double get faceDetectionRate => withFace ? 1.0 : 0.0;
+
   @override
   String? get errorMessage => null;
 

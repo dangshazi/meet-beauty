@@ -1,5 +1,4 @@
 import 'package:meet_beauty/features/result/application/scoring_controller.dart';
-import 'package:meet_beauty/features/tutorial/application/tutorial_controller.dart';
 import 'package:meet_beauty/shared/models/score_result.dart';
 
 /// A [ScoringController] that pre-populates a fake [ScoreResult] so the
@@ -13,24 +12,24 @@ class MockScoringController extends ScoringController {
   }
 
   void _seedScore() {
-    // Directly set the score via the public calculate path but deferred.
-    // Use a fake TutorialController only for the data the method needs.
-    calculateScore(_FakeTutorialController());
+    // Directly assign the result without calling calculateScore (which now
+    // requires an AppLocalizations instance not available at construction time).
+    seedResult(ScoreResult(
+      score: 85,
+      stars: 4,
+      feedbackTags: ['great_coverage', 'all_steps_completed', 'good_tracking'],
+      encouragement: 'Mock encouragement',
+      suggestion: null,
+      details: {
+        'completedSteps': 3,
+        'totalSteps': 3,
+        'skippedSteps': 0,
+        'duration': 90,
+        'faceDetectionRate': 95,
+        'completionScore': 100,
+        'trackingScore': 95,
+        'pacingScore': 100,
+      },
+    ));
   }
-}
-
-/// Minimal [TutorialController]-like data source used to seed the score.
-class _FakeTutorialController implements TutorialController {
-  @override
-  int get completedStepsCount => 3;
-  @override
-  int get totalSteps => 3;
-  @override
-  int get skippedStepsCount => 0;
-  @override
-  Duration? get tutorialDuration => const Duration(minutes: 1, seconds: 30);
-
-  // All other members are unused by calculateScore.
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

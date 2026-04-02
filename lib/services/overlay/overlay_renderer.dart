@@ -25,19 +25,34 @@ class OverlayRenderer {
     FaceLandmarks? landmarks,
   ) {
     final style = step.overlayStyle;
-    if (style == null) return;
 
     switch (step.targetRegion) {
       case TargetRegion.lips:
+        if (style == null) return;
         _drawLip(canvas, size, style, landmarks);
         break;
       case TargetRegion.leftCheek:
+        if (style == null) return;
         _drawCheek(canvas, size, style, landmarks, isLeft: true);
         break;
       case TargetRegion.rightCheek:
+        if (style == null) return;
         _drawCheek(canvas, size, style, landmarks, isLeft: false);
         break;
-      default:
+      case TargetRegion.eyebrows:
+        _drawEyebrows(canvas, size, style, landmarks);
+        break;
+      case TargetRegion.leftEye:
+        _drawEyeShadow(canvas, size, style, landmarks, isLeft: true);
+        break;
+      case TargetRegion.rightEye:
+        _drawEyeShadow(canvas, size, style, landmarks, isLeft: false);
+        break;
+      case TargetRegion.forehead:
+        _drawForehead(canvas, size, style, landmarks);
+        break;
+      case TargetRegion.nose:
+        _drawNoseContour(canvas, size, style, landmarks);
         break;
     }
   }
@@ -50,13 +65,41 @@ class OverlayRenderer {
     OverlayStyle style,
     FaceLandmarks? landmarks,
   ) {
+    // Soft feathered edge for natural lip look
     final paint = Paint()
       ..color = style.color.withValues(alpha: style.opacity)
-      ..style = PaintingStyle.fill;
+      ..style = PaintingStyle.fill
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 3);
 
     if (landmarks != null && landmarks.hasLipData) {
-      // Build an outer lip polygon from the four contour groups:
-      //   upper-outer (left→right) + lower-outer (right→left) → closed path
+      // Draw upper lip and lower lip as separate polygons so the mouth
+      // interior is never filled when the mouth is open.
+      final upperPath = _buildSingleLipPath(
+        landmarks.upperLipTop,
+        landmarks.upperLipBottom,
+      );
+      final lowerPath = _buildSingleLipPath(
+        landmarks.lowerLipBottom,
+        landmarks.lowerLipTop,
+      );
+
+      if (upperPath != null && lowerPath != null) {
+        canvas.drawPath(upperPath, paint);
+        canvas.drawPath(lowerPath, paint);
+
+        if (style.showBorder) {
+          final borderPaint = Paint()
+            ..color = (style.borderColor ?? style.color)
+                .withValues(alpha: (style.opacity + 0.3).clamp(0.0, 1.0))
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = style.borderWidth ?? 1.5;
+          canvas.drawPath(upperPath, borderPaint);
+          canvas.drawPath(lowerPath, borderPaint);
+        }
+        return;
+      }
+
+      // If split paths fail, fall back to full outer polygon
       final path = _buildLipPath(
         landmarks.upperLipTop,
         landmarks.lowerLipBottom,
@@ -64,7 +107,6 @@ class OverlayRenderer {
       if (path != null) {
         canvas.drawPath(path, paint);
 
-        // Optional border / highlight for current step
         if (style.showBorder) {
           final borderPaint = Paint()
             ..color = (style.borderColor ?? style.color)
@@ -81,6 +123,28 @@ class OverlayRenderer {
     _drawFallbackLip(canvas, size, paint);
   }
 
+  /// Build a single lip polygon from outer + inner contour.
+  ///
+  /// Walks [outer] left→right, then [inner] right→left to close.
+  Path? _buildSingleLipPath(
+    List<FacePoint> outer,
+    List<FacePoint> inner,
+  ) {
+    if (outer.length < 3 || inner.length < 3) return null;
+
+    final path = Path();
+    path.moveTo(outer.first.x, outer.first.y);
+    for (final p in outer.skip(1)) {
+      path.lineTo(p.x, p.y);
+    }
+    for (final p in inner.reversed) {
+      path.lineTo(p.x, p.y);
+    }
+    path.close();
+    return path;
+  }
+
+  /// Build a full outer lip polygon (fallback when split paths unavailable).
   Path? _buildLipPath(
     List<FacePoint> upperOuter,
     List<FacePoint> lowerOuter,
@@ -88,12 +152,10 @@ class OverlayRenderer {
     if (upperOuter.length < 3 || lowerOuter.length < 3) return null;
 
     final path = Path();
-    // Upper outer: walk left → right
     path.moveTo(upperOuter.first.x, upperOuter.first.y);
     for (final p in upperOuter.skip(1)) {
       path.lineTo(p.x, p.y);
     }
-    // Lower outer: walk right → left (reverse) to close the polygon
     for (final p in lowerOuter.reversed) {
       path.lineTo(p.x, p.y);
     }
@@ -149,29 +211,41 @@ class OverlayRenderer {
 
   /// Estimate the cheek blush centre from available landmarks.
   ///
-  /// Strategy:
-  ///   • Prefer: midpoint of outer-eye and noseBase (rough apple-of-cheek).
-  ///   • Fallback within landmarks: use bounding box quarters.
+  /// Strategy (in priority order):
+  ///   1. ML Kit cheek landmark (most accurate — directly on apple of cheek)
+  ///   2. Midpoint of eye + mouth corner, shifted outward & downward
+  ///   3. Bounding box quadrant fallback
   Offset? _cheekCenter(
     FaceLandmarks landmarks,
     Size size, {
     required bool isLeft,
   }) {
-    final eye = isLeft ? landmarks.leftEye : landmarks.rightEye;
-    final nose = landmarks.noseBase;
-
-    if (eye != null && nose != null) {
-      // Apple of cheek ≈ midpoint between eye and noseBase, shifted slightly
-      // outward and downward.
-      final mid = Offset(
-        (eye.x + nose.x) / 2,
-        (eye.y + nose.y) / 2,
-      );
-      final outward = isLeft ? -landmarks.boundingBox.width * 0.06 : landmarks.boundingBox.width * 0.06;
-      return mid.translate(outward, landmarks.boundingBox.height * 0.04);
+    // 1. Best: use ML Kit's dedicated cheek landmark
+    final cheekAnchor =
+        isLeft ? landmarks.leftCheekAnchor : landmarks.rightCheekAnchor;
+    if (cheekAnchor != null) {
+      // Shift slightly outward for blush spread
+      final outward = isLeft
+          ? -landmarks.boundingBox.width * 0.04
+          : landmarks.boundingBox.width * 0.04;
+      return Offset(cheekAnchor.x + outward, cheekAnchor.y);
     }
 
-    // If only boundingBox is available, split into quadrants
+    // 2. Midpoint of eye + mouth corner, with generous outward offset
+    final eye = isLeft ? landmarks.leftEye : landmarks.rightEye;
+    final mouth = isLeft ? landmarks.leftMouth : landmarks.rightMouth;
+    if (eye != null && mouth != null) {
+      final mid = Offset(
+        (eye.x + mouth.x) / 2,
+        (eye.y + mouth.y) / 2,
+      );
+      final outward = isLeft
+          ? -landmarks.boundingBox.width * 0.15
+          : landmarks.boundingBox.width * 0.15;
+      return mid.translate(outward, landmarks.boundingBox.height * 0.08);
+    }
+
+    // 3. Fallback: bounding box quadrant
     final bbox = landmarks.boundingBox;
     if (!bbox.isEmpty) {
       final x = isLeft
@@ -252,8 +326,270 @@ class OverlayRenderer {
     }
   }
 
+  // ── Eyebrow overlay ──────────────────────────────────────────────────────
+
+  static const _kDefaultHighlightColor = Color(0xFFB0BEC5);
+  static const _kDefaultHighlightOpacity = 0.35;
+
+  void _drawEyebrows(
+    Canvas canvas,
+    Size size,
+    OverlayStyle? style,
+    FaceLandmarks? landmarks,
+  ) {
+    final color = style?.color ?? _kDefaultHighlightColor;
+    final opacity = style?.opacity ?? _kDefaultHighlightOpacity;
+    final paint = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 6);
+
+    if (landmarks != null && landmarks.hasEyebrowData) {
+      _drawEyebrowContour(canvas, landmarks.leftEyebrowTop,
+          landmarks.leftEyebrowBottom, paint);
+      _drawEyebrowContour(canvas, landmarks.rightEyebrowTop,
+          landmarks.rightEyebrowBottom, paint);
+      return;
+    }
+
+    // Fallback
+    _drawFallbackEyebrows(canvas, size, paint);
+  }
+
+  void _drawEyebrowContour(
+    Canvas canvas,
+    List<FacePoint> top,
+    List<FacePoint> bottom,
+    Paint paint,
+  ) {
+    if (top.length < 2 || bottom.length < 2) return;
+    final path = Path();
+    path.moveTo(top.first.x, top.first.y);
+    for (final p in top.skip(1)) {
+      path.lineTo(p.x, p.y);
+    }
+    for (final p in bottom.reversed) {
+      path.lineTo(p.x, p.y);
+    }
+    path.close();
+    canvas.drawPath(path, paint);
+  }
+
+  void _drawFallbackEyebrows(Canvas canvas, Size size, Paint paint) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    // Left eyebrow
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx - size.width * 0.16, cy - size.height * 0.12),
+        width: size.width * 0.18,
+        height: size.height * 0.025,
+      ),
+      paint,
+    );
+    // Right eyebrow
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx + size.width * 0.16, cy - size.height * 0.12),
+        width: size.width * 0.18,
+        height: size.height * 0.025,
+      ),
+      paint,
+    );
+  }
+
+  // ── Eye shadow overlay ──────────────────────────────────────────────────
+
+  void _drawEyeShadow(
+    Canvas canvas,
+    Size size,
+    OverlayStyle? style,
+    FaceLandmarks? landmarks, {
+    required bool isLeft,
+  }) {
+    final color = style?.color ?? _kDefaultHighlightColor;
+    final opacity = style?.opacity ?? _kDefaultHighlightOpacity;
+    final paint = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 10);
+
+    if (landmarks != null && landmarks.hasEyeContourData) {
+      final contour =
+          isLeft ? landmarks.leftEyeContour : landmarks.rightEyeContour;
+      if (contour.length >= 4) {
+        // Draw a blurred region covering the eyelid area (above eye contour).
+        final bbox = _contourBoundingBox(contour);
+        final lidRect = Rect.fromLTRB(
+          bbox.left - bbox.width * 0.08,
+          bbox.top - bbox.height * 0.6,
+          bbox.right + bbox.width * 0.08,
+          bbox.top + bbox.height * 0.3,
+        );
+        canvas.drawOval(lidRect, paint);
+        return;
+      }
+    }
+
+    _drawFallbackEyeShadow(canvas, size, paint, isLeft: isLeft);
+  }
+
+  void _drawFallbackEyeShadow(
+    Canvas canvas,
+    Size size,
+    Paint paint, {
+    required bool isLeft,
+  }) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    final xOffset = isLeft ? -size.width * 0.16 : size.width * 0.16;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx + xOffset, cy - size.height * 0.06),
+        width: size.width * 0.14,
+        height: size.height * 0.04,
+      ),
+      paint,
+    );
+  }
+
+  // ── Forehead / contour overlay ──────────────────────────────────────────
+
+  void _drawForehead(
+    Canvas canvas,
+    Size size,
+    OverlayStyle? style,
+    FaceLandmarks? landmarks,
+  ) {
+    final color = style?.color ?? const Color(0xFF8D6E63);
+    final opacity = style?.opacity ?? 0.25;
+    final paint = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.fill
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 14);
+
+    if (landmarks != null && !landmarks.boundingBox.isEmpty) {
+      final bbox = landmarks.boundingBox;
+      // Forehead region: top of bounding box, above the eyebrows
+      final foreheadRect = Rect.fromLTRB(
+        bbox.left + bbox.width * 0.1,
+        bbox.top,
+        bbox.right - bbox.width * 0.1,
+        bbox.top + bbox.height * 0.25,
+      );
+      canvas.drawOval(foreheadRect, paint);
+
+      // Jawline contour strips on both sides
+      final jawPaint = Paint()
+        ..color = color.withValues(alpha: opacity * 0.8)
+        ..style = PaintingStyle.fill
+        ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 12);
+
+      // Left jawline
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(bbox.left + bbox.width * 0.12,
+              bbox.bottom - bbox.height * 0.15),
+          width: bbox.width * 0.15,
+          height: bbox.height * 0.2,
+        ),
+        jawPaint,
+      );
+      // Right jawline
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(bbox.right - bbox.width * 0.12,
+              bbox.bottom - bbox.height * 0.15),
+          width: bbox.width * 0.15,
+          height: bbox.height * 0.2,
+        ),
+        jawPaint,
+      );
+      return;
+    }
+
+    _drawFallbackForehead(canvas, size, paint);
+  }
+
+  void _drawFallbackForehead(Canvas canvas, Size size, Paint paint) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(cx, cy - size.height * 0.16),
+        width: size.width * 0.4,
+        height: size.height * 0.08,
+      ),
+      paint,
+    );
+  }
+
+  // ── Nose contour overlay ────────────────────────────────────────────────
+
+  void _drawNoseContour(
+    Canvas canvas,
+    Size size,
+    OverlayStyle? style,
+    FaceLandmarks? landmarks,
+  ) {
+    final color = style?.color ?? const Color(0xFF8D6E63);
+    final opacity = style?.opacity ?? 0.25;
+    final paint = Paint()
+      ..color = color.withValues(alpha: opacity)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.0
+      ..maskFilter = const ui.MaskFilter.blur(ui.BlurStyle.normal, 4);
+
+    if (landmarks != null && landmarks.hasNoseData) {
+      if (landmarks.noseBridge.length >= 2) {
+        final path = Path();
+        path.moveTo(
+            landmarks.noseBridge.first.x, landmarks.noseBridge.first.y);
+        for (final p in landmarks.noseBridge.skip(1)) {
+          path.lineTo(p.x, p.y);
+        }
+        canvas.drawPath(path, paint);
+      }
+      if (landmarks.noseBottom.length >= 2) {
+        final path = Path();
+        path.moveTo(
+            landmarks.noseBottom.first.x, landmarks.noseBottom.first.y);
+        for (final p in landmarks.noseBottom.skip(1)) {
+          path.lineTo(p.x, p.y);
+        }
+        canvas.drawPath(path, paint);
+      }
+      return;
+    }
+
+    _drawFallbackNose(canvas, size, paint);
+  }
+
+  void _drawFallbackNose(Canvas canvas, Size size, Paint paint) {
+    final cx = size.width / 2;
+    final cy = size.height / 2;
+    canvas.drawLine(
+      Offset(cx, cy - size.height * 0.06),
+      Offset(cx, cy + size.height * 0.04),
+      paint,
+    );
+  }
+
+  // ── Utility ─────────────────────────────────────────────────────────────
+
+  Rect _contourBoundingBox(List<FacePoint> contour) {
+    double minX = double.infinity, minY = double.infinity;
+    double maxX = double.negativeInfinity, maxY = double.negativeInfinity;
+    for (final p in contour) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    return Rect.fromLTRB(minX, minY, maxX, maxY);
+  }
+
   // Kept to satisfy any existing callers that still use the old API.
-  // Delegates to [drawOverlay] without landmarks.
   @Deprecated('Use drawOverlay instead')
   List<Offset>? calculateLipPolygon(List<FacePoint> landmarks) => null;
 

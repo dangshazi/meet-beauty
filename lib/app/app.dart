@@ -4,7 +4,9 @@ import 'package:provider/provider.dart';
 import 'package:provider/single_child_widget.dart';
 import 'package:meet_beauty/app/router.dart';
 import 'package:meet_beauty/app/theme/app_theme.dart';
+import 'package:meet_beauty/l10n/app_localizations.dart';
 import 'package:meet_beauty/shared/config/app_config.dart';
+import 'package:meet_beauty/shared/providers/locale_provider.dart';
 
 class MeetBeautyApp extends StatelessWidget {
   /// Optional providers override — pass in tests to inject mocks.
@@ -24,14 +26,20 @@ class MeetBeautyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiProvider(
       providers: overrideProviders ?? AppConfig.providers,
-      child: MaterialApp.router(
-        title: AppConfig.appName,
-        theme: AppTheme.light,
-        darkTheme: AppTheme.dark,
-        themeMode: ThemeMode.system,
-        routerConfig: routerConfig ?? appRouter,
-        debugShowCheckedModeBanner: false,
-      ),
+      builder: (context, child) {
+        final localeProvider = context.watch<LocaleProvider>();
+        return MaterialApp.router(
+          title: AppConfig.appName,
+          theme: AppTheme.light,
+          darkTheme: AppTheme.dark,
+          themeMode: ThemeMode.system,
+          routerConfig: routerConfig ?? appRouter,
+          debugShowCheckedModeBanner: false,
+          locale: localeProvider.locale,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+        );
+      },
     );
   }
 }

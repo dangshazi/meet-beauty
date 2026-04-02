@@ -2,7 +2,9 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:meet_beauty/app/theme/app_colors.dart';
+import 'package:meet_beauty/features/result/application/scoring_controller.dart';
 import 'package:meet_beauty/features/tutorial/application/tutorial_controller.dart';
+import 'package:meet_beauty/l10n/app_localizations.dart';
 import 'package:meet_beauty/services/face_tracking_controller.dart';
 import 'package:meet_beauty/services/overlay/overlay_renderer.dart';
 import 'package:meet_beauty/shared/models/face_landmarks.dart';
@@ -106,9 +108,16 @@ class _TutorialPageState extends State<TutorialPage>
   }
 
   void _completeTutorial(TutorialController controller) {
-    // Stop camera tracking before leaving the page.
     _tracker.stopTracking();
     controller.completeTutorial();
+
+    final scoring = context.read<ScoringController>();
+    scoring.calculateScore(
+      controller,
+      faceDetectionRate: _tracker.faceDetectionRate,
+      l10n: AppLocalizations.of(context)!,
+    );
+
     context.go('/result');
   }
 }
@@ -156,6 +165,7 @@ class _CameraSection extends StatelessWidget {
                                 painter: _ArOverlayPainter(
                                   step: tutorial.currentStep!,
                                   landmarks: tracker.landmarks,
+                                  debugLandmarks: tracker.landmarks,
                                 ),
                               ),
                             ),
@@ -172,6 +182,7 @@ class _CameraSection extends StatelessWidget {
                               painter: _ArOverlayPainter(
                                 step: tutorial.currentStep!,
                                 landmarks: tracker.landmarks,
+                                debugLandmarks: tracker.landmarks,
                               ),
                             ),
                           ),
@@ -253,21 +264,35 @@ class _CameraSection extends StatelessWidget {
 // ── AR overlay painter ─────────────────────────────────────────────────────
 
 class _ArOverlayPainter extends CustomPainter {
-  _ArOverlayPainter({required this.step, this.landmarks});
+  _ArOverlayPainter({
+    required this.step,
+    this.landmarks,
+    this.debugLandmarks,
+  });
 
   final TutorialStep step;
   final FaceLandmarks? landmarks;
+  final FaceLandmarks? debugLandmarks;
 
   static final OverlayRenderer _renderer = OverlayRenderer();
 
   @override
   void paint(Canvas canvas, Size size) {
     _renderer.drawOverlay(canvas, size, step, landmarks);
+    // Debug: draw raw landmark points to verify coordinate mapping
+    assert(() {
+      if (debugLandmarks != null) {
+        _renderer.debugDrawLandmarks(canvas, debugLandmarks!);
+      }
+      return true;
+    }());
   }
 
   @override
   bool shouldRepaint(covariant _ArOverlayPainter oldDelegate) {
-    return oldDelegate.step != step || oldDelegate.landmarks != landmarks;
+    return oldDelegate.step != step ||
+        oldDelegate.landmarks != landmarks ||
+        oldDelegate.debugLandmarks != debugLandmarks;
   }
 }
 
@@ -328,7 +353,7 @@ class _StepPanel extends StatelessWidget {
                 Expanded(
                   child: OutlinedButton(
                     onPressed: tutorial.previousStep,
-                    child: const Text('上一步'),
+                    child: Text(AppLocalizations.of(context)!.tutorialPreviousStep),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -338,7 +363,9 @@ class _StepPanel extends StatelessWidget {
                 child: ElevatedButton(
                   onPressed:
                       tutorial.isLastStep ? onComplete : tutorial.nextStep,
-                  child: Text(tutorial.isLastStep ? '完成教学' : '下一步'),
+                  child: Text(tutorial.isLastStep
+                        ? AppLocalizations.of(context)!.tutorialComplete
+                        : AppLocalizations.of(context)!.tutorialNextStep),
                 ),
               ),
             ],
@@ -356,6 +383,7 @@ class _FaceHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Center(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 32),
@@ -364,14 +392,14 @@ class _FaceHint extends StatelessWidget {
           color: Colors.black54,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: const Row(
+        child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.face_retouching_natural, color: Colors.white70, size: 18),
-            SizedBox(width: 8),
+            const Icon(Icons.face_retouching_natural, color: Colors.white70, size: 18),
+            const SizedBox(width: 8),
             Text(
-              '请将面部对准屏幕',
-              style: TextStyle(color: Colors.white, fontSize: 14),
+              l10n.tutorialFaceHint,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
             ),
           ],
         ),
@@ -409,6 +437,7 @@ class _ErrorBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Positioned(
       top: 0,
       left: 0,
@@ -417,7 +446,7 @@ class _ErrorBanner extends StatelessWidget {
         color: Colors.red.withValues(alpha: 0.85),
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
         child: Text(
-          message ?? '相机初始化失败，请重试',
+          message ?? l10n.tutorialCameraErrorDefault,
           style: const TextStyle(color: Colors.white, fontSize: 13),
           textAlign: TextAlign.center,
         ),
@@ -433,6 +462,7 @@ class _PermissionDeniedView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context)!;
     return Scaffold(
       body: Center(
         child: Padding(
@@ -443,25 +473,25 @@ class _PermissionDeniedView extends StatelessWidget {
               const Icon(Icons.camera_alt_outlined, size: 64, color: Colors.grey),
               const SizedBox(height: 24),
               Text(
-                '需要相机权限',
+                l10n.permissionRequired,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               const SizedBox(height: 12),
-              const Text(
-                'AR 化妆教学需要使用前置摄像头来检测面部区域。请授权相机权限后继续。',
+              Text(
+                l10n.permissionDescription,
                 textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
+                style: const TextStyle(color: Colors.grey),
               ),
               const SizedBox(height: 32),
               ElevatedButton.icon(
                 onPressed: () => openAppSettings(),
                 icon: const Icon(Icons.settings),
-                label: const Text('前往设置开启'),
+                label: Text(l10n.permissionOpenSettings),
               ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: onRetry,
-                child: const Text('重试'),
+                child: Text(l10n.permissionRetry),
               ),
             ],
           ),

@@ -4,6 +4,7 @@ import 'package:meet_beauty/features/analysis/presentation/analysis_page.dart';
 import 'package:meet_beauty/features/recommendation/presentation/recommendation_page.dart';
 import 'package:meet_beauty/features/tutorial/presentation/tutorial_page.dart';
 import 'package:meet_beauty/features/result/presentation/result_page.dart';
+import 'package:meet_beauty/features/settings/presentation/settings_page.dart';
 import 'package:meet_beauty/shared/models/face_feature_result.dart';
 
 /// Creates a fresh [GoRouter] with all app routes.
@@ -38,6 +39,11 @@ GoRouter buildAppRouter() => GoRouter(
       path: '/result',
       name: 'result',
       builder: (context, state) => const ResultPage(),
+    ),
+    GoRoute(
+      path: '/settings',
+      name: 'settings',
+      builder: (context, state) => const SettingsPage(),
     ),
   ],
 );
