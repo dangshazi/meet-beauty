@@ -55,7 +55,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
         title: Text(l10n.analysisTitle),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/'),
+          onPressed: () => context.pop(),
         ),
       ),
       body: Consumer<AnalysisController>(
@@ -214,7 +214,7 @@ class _AnalysisPageState extends State<AnalysisPage> {
                         width: double.infinity,
                         child: ElevatedButton(
                           onPressed: controller.isAnalysisComplete
-                              ? () => context.go('/recommendation', extra: controller.featureResult)
+                              ? () => context.push('/recommendation', extra: controller.featureResult)
                               : (controller.currentLandmarks != null && !controller.isAnalyzing)
                                   ? () => controller.completeAnalysis()
                                   : null,

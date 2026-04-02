@@ -75,7 +75,7 @@ class HomePage extends StatelessWidget {
                   const Spacer(flex: 2),
                   // Start Button
                   ElevatedButton(
-                    onPressed: () => context.go('/analysis'),
+                    onPressed: () => context.push('/analysis'),
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(

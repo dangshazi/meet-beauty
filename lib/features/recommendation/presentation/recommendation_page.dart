@@ -77,7 +77,7 @@ class _RecommendationView extends StatelessWidget {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: controller.selectedProfile != null
-                        ? () => context.go('/tutorial')
+                        ? () => context.push('/tutorial')
                         : null,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),

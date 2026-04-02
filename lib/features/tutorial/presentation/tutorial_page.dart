@@ -118,7 +118,7 @@ class _TutorialPageState extends State<TutorialPage>
       l10n: AppLocalizations.of(context)!,
     );
 
-    context.go('/result');
+    context.push('/result');
   }
 }
 
