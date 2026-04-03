@@ -21,9 +21,10 @@ class TutorialPage extends StatefulWidget {
 }
 
 class _TutorialPageState extends State<TutorialPage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, SingleTickerProviderStateMixin {
   // Cache controller reference so dispose() can call it without context.
   late FaceTrackingController _tracker;
+  late AnimationController _arrowAnimController;
 
   @override
   void didChangeDependencies() {
@@ -35,6 +36,10 @@ class _TutorialPageState extends State<TutorialPage>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _arrowAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat(reverse: true);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       context.read<TutorialController>().startTutorial();
@@ -48,6 +53,7 @@ class _TutorialPageState extends State<TutorialPage>
     WidgetsBinding.instance.removeObserver(this);
     // FaceTrackingController.dispose() (called by Provider) handles
     // stopTracking() — no need to call it here.
+    _arrowAnimController.dispose();
     super.dispose();
   }
 
@@ -93,6 +99,8 @@ class _TutorialPageState extends State<TutorialPage>
                   tracker: tracker,
                   accumulateOverlays:
                       context.watch<SettingsProvider>().accumulateOverlays,
+                  applicationDirection: tutorial.currentStep?.applicationDirection ?? ApplicationDirection.none,
+                  arrowAnimation: _arrowAnimController,
                   onClose: () {
                     _tracker.stopTracking();
                     context.go('/');
@@ -132,12 +140,16 @@ class _CameraSection extends StatelessWidget {
     required this.tutorial,
     required this.tracker,
     required this.accumulateOverlays,
+    required this.applicationDirection,
+    required this.arrowAnimation,
     required this.onClose,
   });
 
   final TutorialController tutorial;
   final FaceTrackingController tracker;
   final bool accumulateOverlays;
+  final ApplicationDirection applicationDirection;
+  final Animation<double> arrowAnimation;
   final VoidCallback onClose;
 
   @override
@@ -171,6 +183,8 @@ class _CameraSection extends StatelessWidget {
                                   steps: _buildOverlaySteps(tutorial),
                                   landmarks: tracker.landmarks,
                                   debugLandmarks: tracker.landmarks,
+                                  direction: applicationDirection,
+                                  arrowProgress: arrowAnimation.value,
                                 ),
                               ),
                             ),
@@ -188,6 +202,8 @@ class _CameraSection extends StatelessWidget {
                                 steps: _buildOverlaySteps(tutorial),
                                 landmarks: tracker.landmarks,
                                 debugLandmarks: tracker.landmarks,
+                                direction: applicationDirection,
+                                arrowProgress: arrowAnimation.value,
                               ),
                             ),
                           ),
@@ -281,17 +297,28 @@ class _ArOverlayPainter extends CustomPainter {
     required this.steps,
     this.landmarks,
     this.debugLandmarks,
+    this.direction = ApplicationDirection.none,
+    this.arrowProgress = 0.0,
   });
 
   final List<TutorialStep> steps;
   final FaceLandmarks? landmarks;
   final FaceLandmarks? debugLandmarks;
+  final ApplicationDirection direction;
+  final double arrowProgress;
 
   static final OverlayRenderer _renderer = OverlayRenderer();
 
   @override
   void paint(Canvas canvas, Size size) {
     _renderer.drawOverlays(canvas, size, steps, landmarks);
+    // Draw direction arrow for the current (last) step
+    if (steps.isNotEmpty && direction != ApplicationDirection.none) {
+      _renderer.drawDirectionArrow(
+        canvas, size, direction, landmarks,
+        progress: arrowProgress,
+      );
+    }
     // Debug: draw raw landmark points to verify coordinate mapping
     assert(() {
       if (debugLandmarks != null) {
@@ -305,7 +332,9 @@ class _ArOverlayPainter extends CustomPainter {
   bool shouldRepaint(covariant _ArOverlayPainter oldDelegate) {
     return !_listEquals(oldDelegate.steps, steps) ||
         oldDelegate.landmarks != landmarks ||
-        oldDelegate.debugLandmarks != debugLandmarks;
+        oldDelegate.debugLandmarks != debugLandmarks ||
+        oldDelegate.direction != direction ||
+        (oldDelegate.arrowProgress - arrowProgress).abs() > 0.01;
   }
 
   static bool _listEquals(List<TutorialStep> a, List<TutorialStep> b) {
@@ -345,6 +374,10 @@ class _StepPanel extends StatelessWidget {
               step.instruction,
               style: Theme.of(context).textTheme.bodyMedium,
             ),
+            if (step.tips.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              _TipsCarousel(tips: step.tips),
+            ],
           ],
           const SizedBox(height: 20),
 
@@ -516,6 +549,76 @@ class _PermissionDeniedView extends StatelessWidget {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TipsCarousel extends StatefulWidget {
+  const _TipsCarousel({required this.tips});
+
+  final List<String> tips;
+
+  @override
+  State<_TipsCarousel> createState() => _TipsCarouselState();
+}
+
+class _TipsCarouselState extends State<_TipsCarousel> {
+  int _currentIndex = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleNext();
+  }
+
+  @override
+  void didUpdateWidget(covariant _TipsCarousel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.tips != widget.tips) {
+      _currentIndex = 0;
+    }
+  }
+
+  void _scheduleNext() {
+    if (widget.tips.length <= 1) return;
+    Future.delayed(const Duration(seconds: 4), () {
+      if (!mounted) return;
+      setState(() {
+        _currentIndex = (_currentIndex + 1) % widget.tips.length;
+      });
+      _scheduleNext();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (widget.tips.isEmpty) return const SizedBox.shrink();
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: Container(
+        key: ValueKey(_currentIndex),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          color: AppColors.primaryLight.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.lightbulb_outline,
+                size: 16, color: AppColors.primary.withValues(alpha: 0.7)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                widget.tips[_currentIndex],
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.primary,
+                    ),
+              ),
+            ),
+          ],
         ),
       ),
     );
