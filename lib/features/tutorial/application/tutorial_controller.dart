@@ -142,6 +142,14 @@ class TutorialController extends ChangeNotifier {
         .length;
   }
 
+  /// Returns all tutorial steps that have been completed so far.
+  List<TutorialStep> get completedSteps {
+    if (_currentProfile == null) return const [];
+    return _currentProfile!.tutorialSteps
+        .where((s) => _stepStatuses[s.id] == StepStatus.completed)
+        .toList();
+  }
+
   int get skippedStepsCount {
     return _stepStatuses.values.where((s) => s == StepStatus.skipped).length;
   }

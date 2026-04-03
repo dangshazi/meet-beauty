@@ -30,6 +30,9 @@ dependencies:
   # Navigation
   go_router: ^15.1.2
 
+  # Persistence
+  shared_preferences: ^2.5.3
+
   # UI Components
   flutter_svg: ^2.0.17
 

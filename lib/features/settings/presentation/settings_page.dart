@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:meet_beauty/l10n/app_localizations.dart';
 import 'package:meet_beauty/shared/providers/locale_provider.dart';
+import 'package:meet_beauty/shared/providers/settings_provider.dart';
 
 class SettingsPage extends StatelessWidget {
   const SettingsPage({super.key});
@@ -10,6 +11,7 @@ class SettingsPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context)!;
     final localeProvider = context.watch<LocaleProvider>();
+    final settingsProvider = context.watch<SettingsProvider>();
 
     return Scaffold(
       appBar: AppBar(
@@ -48,6 +50,14 @@ class SettingsPage extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+          const Divider(height: 32),
+          SwitchListTile(
+            title: Text(l10n.settingsAccumulateOverlays),
+            subtitle: Text(l10n.settingsAccumulateOverlaysDesc),
+            value: settingsProvider.accumulateOverlays,
+            onChanged: (v) =>
+                context.read<SettingsProvider>().setAccumulateOverlays(v),
           ),
         ],
       ),

@@ -6,6 +6,7 @@ import 'package:meet_beauty/features/recommendation/application/recommendation_c
 import 'package:meet_beauty/features/result/application/scoring_controller.dart';
 import 'package:meet_beauty/services/face_tracking_controller.dart';
 import 'package:meet_beauty/shared/providers/locale_provider.dart';
+import 'package:meet_beauty/shared/providers/settings_provider.dart';
 
 class AppConfig {
   AppConfig._();
@@ -26,6 +27,8 @@ class AppConfig {
 
   /// Providers for state management.
   static final List<SingleChildWidget> providers = [
+    ChangeNotifierProvider<SettingsProvider>(
+        create: (_) => SettingsProvider()),
     ChangeNotifierProvider<LocaleProvider>(
         create: (_) => LocaleProvider()),
     ChangeNotifierProvider<AnalysisController>(

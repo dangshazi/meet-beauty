@@ -33,6 +33,9 @@
   "settingsLanguageEn": "English",
   "settingsLanguageZh": "中文",
 
+  "settingsAccumulateOverlays": "累积上妆效果",
+  "settingsAccumulateOverlaysDesc": "进入下一步时保留上一步的妆容叠加效果",
+
   "homeTitle": "Meet Beauty",
   "homeSubtitle": "AI 化妆教练",
   "homeFeatureAnalysis": "面部分析",
@@ -72,5 +75,8 @@
       }
     }
   },
-  "recSteps": "{count} 步"
+  "recSteps": "{count} 步",
+
+  "settingsAccumulateOverlays": "累积妆容效果",
+  "settingsAccumulateOverlaysDesc": "开启后，进入下一步时保留之前步骤的上妆效果"
 }

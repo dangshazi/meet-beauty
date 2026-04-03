@@ -90,6 +90,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get settingsLanguageZh => '中文';
 
   @override
+  String get settingsAccumulateOverlays => '累积妆容效果';
+
+  @override
+  String get settingsAccumulateOverlaysDesc => '开启后，进入下一步时保留之前步骤的上妆效果';
+
+  @override
   String get homeTitle => 'Meet Beauty';
 
   @override

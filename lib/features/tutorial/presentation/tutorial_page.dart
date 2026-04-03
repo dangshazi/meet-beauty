@@ -9,6 +9,7 @@ import 'package:meet_beauty/services/face_tracking_controller.dart';
 import 'package:meet_beauty/services/overlay/overlay_renderer.dart';
 import 'package:meet_beauty/shared/models/face_landmarks.dart';
 import 'package:meet_beauty/shared/models/makeup_profile.dart';
+import 'package:meet_beauty/shared/providers/settings_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
@@ -90,6 +91,8 @@ class _TutorialPageState extends State<TutorialPage>
                 child: _CameraSection(
                   tutorial: tutorial,
                   tracker: tracker,
+                  accumulateOverlays:
+                      context.watch<SettingsProvider>().accumulateOverlays,
                   onClose: () {
                     _tracker.stopTracking();
                     context.go('/');
@@ -128,11 +131,13 @@ class _CameraSection extends StatelessWidget {
   const _CameraSection({
     required this.tutorial,
     required this.tracker,
+    required this.accumulateOverlays,
     required this.onClose,
   });
 
   final TutorialController tutorial;
   final FaceTrackingController tracker;
+  final bool accumulateOverlays;
   final VoidCallback onClose;
 
   @override
@@ -163,7 +168,7 @@ class _CameraSection extends StatelessWidget {
                             Positioned.fill(
                               child: CustomPaint(
                                 painter: _ArOverlayPainter(
-                                  step: tutorial.currentStep!,
+                                  steps: _buildOverlaySteps(tutorial),
                                   landmarks: tracker.landmarks,
                                   debugLandmarks: tracker.landmarks,
                                 ),
@@ -180,7 +185,7 @@ class _CameraSection extends StatelessWidget {
                           Positioned.fill(
                             child: CustomPaint(
                               painter: _ArOverlayPainter(
-                                step: tutorial.currentStep!,
+                                steps: _buildOverlaySteps(tutorial),
                                 landmarks: tracker.landmarks,
                                 debugLandmarks: tracker.landmarks,
                               ),
@@ -259,18 +264,26 @@ class _CameraSection extends StatelessWidget {
       ),
     );
   }
+
+  List<TutorialStep> _buildOverlaySteps(TutorialController tutorial) {
+    if (tutorial.currentStep == null) return const [];
+    if (accumulateOverlays) {
+      return [...tutorial.completedSteps, tutorial.currentStep!];
+    }
+    return [tutorial.currentStep!];
+  }
 }
 
 // ── AR overlay painter ─────────────────────────────────────────────────────
 
 class _ArOverlayPainter extends CustomPainter {
   _ArOverlayPainter({
-    required this.step,
+    required this.steps,
     this.landmarks,
     this.debugLandmarks,
   });
 
-  final TutorialStep step;
+  final List<TutorialStep> steps;
   final FaceLandmarks? landmarks;
   final FaceLandmarks? debugLandmarks;
 
@@ -278,7 +291,7 @@ class _ArOverlayPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    _renderer.drawOverlay(canvas, size, step, landmarks);
+    _renderer.drawOverlays(canvas, size, steps, landmarks);
     // Debug: draw raw landmark points to verify coordinate mapping
     assert(() {
       if (debugLandmarks != null) {
@@ -290,9 +303,17 @@ class _ArOverlayPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _ArOverlayPainter oldDelegate) {
-    return oldDelegate.step != step ||
+    return !_listEquals(oldDelegate.steps, steps) ||
         oldDelegate.landmarks != landmarks ||
         oldDelegate.debugLandmarks != debugLandmarks;
+  }
+
+  static bool _listEquals(List<TutorialStep> a, List<TutorialStep> b) {
+    if (a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i] != b[i]) return false;
+    }
+    return true;
   }
 }
 

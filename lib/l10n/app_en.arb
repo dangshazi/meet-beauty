@@ -33,6 +33,9 @@
   "settingsLanguageEn": "English",
   "settingsLanguageZh": "中文",
 
+  "settingsAccumulateOverlays": "Accumulate Makeup Effects",
+  "settingsAccumulateOverlaysDesc": "Keep previous step's makeup overlay when advancing to next step",
+
   "homeTitle": "Meet Beauty",
   "homeSubtitle": "AI Makeup Coach",
   "homeFeatureAnalysis": "Face Analysis",

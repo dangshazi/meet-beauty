@@ -260,6 +260,18 @@ abstract class AppLocalizations {
   /// **'中文'**
   String get settingsLanguageZh;
 
+  /// No description provided for @settingsAccumulateOverlays.
+  ///
+  /// In en, this message translates to:
+  /// **'Accumulate Makeup Effects'**
+  String get settingsAccumulateOverlays;
+
+  /// No description provided for @settingsAccumulateOverlaysDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Keep previous step\'s makeup overlay when advancing to next step'**
+  String get settingsAccumulateOverlaysDesc;
+
   /// No description provided for @homeTitle.
   ///
   /// In en, this message translates to:

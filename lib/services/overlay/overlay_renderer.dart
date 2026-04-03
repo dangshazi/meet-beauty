@@ -15,6 +15,20 @@ import 'package:meet_beauty/shared/models/makeup_profile.dart';
 class OverlayRenderer {
   // ── Public entry point ────────────────────────────────────────────────────
 
+  /// Draw overlays for multiple [steps] onto [canvas] / [size].
+  ///
+  /// Each step's overlay is drawn sequentially so effects accumulate.
+  void drawOverlays(
+    Canvas canvas,
+    Size size,
+    List<TutorialStep> steps,
+    FaceLandmarks? landmarks,
+  ) {
+    for (final step in steps) {
+      drawOverlay(canvas, size, step, landmarks);
+    }
+  }
+
   /// Draw the overlay for [step] onto [canvas] / [size].
   ///
   /// [landmarks] may be null; the renderer gracefully falls back to fixed shapes.

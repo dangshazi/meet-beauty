@@ -97,6 +97,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsLanguageZh => '中文';
 
   @override
+  String get settingsAccumulateOverlays => 'Accumulate Makeup Effects';
+
+  @override
+  String get settingsAccumulateOverlaysDesc =>
+      'Keep previous step\'s makeup overlay when advancing to next step';
+
+  @override
   String get homeTitle => 'Meet Beauty';
 
   @override
