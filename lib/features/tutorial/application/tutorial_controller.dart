@@ -173,6 +173,12 @@ class TutorialController extends ChangeNotifier {
             opacity: 0.4,
           ),
           order: 1,
+          tips: [
+            'Use a lip brush for precision',
+            'Blot with tissue for longer wear',
+            'Start from the cupid\'s bow',
+          ],
+          applicationDirection: ApplicationDirection.centerOutward,
         ),
         TutorialStep(
           id: 'step2',
@@ -184,6 +190,12 @@ class TutorialController extends ChangeNotifier {
             opacity: 0.3,
           ),
           order: 2,
+          tips: [
+            'Tap off excess powder first',
+            'Smile to find the apple of your cheek',
+            'Blend in circular motions',
+          ],
+          applicationDirection: ApplicationDirection.upward,
         ),
         TutorialStep(
           id: 'step3',
@@ -195,6 +207,12 @@ class TutorialController extends ChangeNotifier {
             opacity: 0.3,
           ),
           order: 3,
+          tips: [
+            'Match the amount on both sides',
+            'Use a fluffy brush for blending',
+            'Build color gradually',
+          ],
+          applicationDirection: ApplicationDirection.upward,
         ),
       ],
       recommendationReasons: [
