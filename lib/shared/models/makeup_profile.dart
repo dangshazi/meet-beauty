@@ -1,5 +1,19 @@
 import 'package:flutter/material.dart';
 
+/// Direction to apply makeup for a tutorial step.
+enum ApplicationDirection {
+  /// No direction arrow needed
+  none,
+  /// Center outward (e.g., lips)
+  centerOutward,
+  /// Upward sweep (e.g., cheeks toward temples)
+  upward,
+  /// Downward stroke (e.g., forehead contour)
+  downward,
+  /// Inward from edges (e.g., eyebrow filling)
+  inward,
+}
+
 /// Target region for makeup application
 enum TargetRegion {
   lips,
@@ -59,6 +73,8 @@ class TutorialStep {
   final OverlayStyle? overlayStyle;
   final int order;
   final Duration? estimatedDuration;
+  final List<String> tips;
+  final ApplicationDirection applicationDirection;
 
   const TutorialStep({
     required this.id,
@@ -68,6 +84,8 @@ class TutorialStep {
     this.overlayStyle,
     required this.order,
     this.estimatedDuration,
+    this.tips = const [],
+    this.applicationDirection = ApplicationDirection.none,
   });
 
   factory TutorialStep.fromMap(Map<String, dynamic> map) {
@@ -82,6 +100,11 @@ class TutorialStep {
       overlayStyle: map['overlayStyle'] != null
           ? OverlayStyle.fromMap(map['overlayStyle'])
           : null,
+      tips: List<String>.from(map['tips'] as List? ?? []),
+      applicationDirection: ApplicationDirection.values.firstWhere(
+        (e) => e.name == map['applicationDirection'],
+        orElse: () => ApplicationDirection.none,
+      ),
       order: map['order'] as int,
       estimatedDuration: map['estimatedDuration'] != null
           ? Duration(milliseconds: map['estimatedDuration'] as int)
@@ -99,6 +122,9 @@ class TutorialStep {
       'order': order,
       if (estimatedDuration != null)
         'estimatedDuration': estimatedDuration!.inMilliseconds,
+      if (tips.isNotEmpty) 'tips': tips,
+      if (applicationDirection != ApplicationDirection.none)
+        'applicationDirection': applicationDirection.name,
     };
   }
 }
