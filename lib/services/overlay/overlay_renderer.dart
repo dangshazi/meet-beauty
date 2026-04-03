@@ -71,6 +71,96 @@ class OverlayRenderer {
     }
   }
 
+  // ── Direction arrows ─────────────────────────────────────────────────────
+
+  /// Draw an animated direction arrow indicating application direction.
+  ///
+  /// [progress] is 0.0–1.0 animation value that cycles to create pulsing motion.
+  void drawDirectionArrow(
+    Canvas canvas,
+    Size size,
+    ApplicationDirection direction,
+    FaceLandmarks? landmarks, {
+    double progress = 0.0,
+  }) {
+    if (direction == ApplicationDirection.none) return;
+
+    final center = _arrowCenter(size, landmarks);
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.6 + 0.3 * progress)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
+
+    final arrowSize = size.shortestSide * 0.06;
+    final offset = arrowSize * progress * 0.4;
+
+    switch (direction) {
+      case ApplicationDirection.centerOutward:
+        _drawRadialArrows(canvas, center, arrowSize, offset, paint);
+      case ApplicationDirection.upward:
+        _drawVerticalArrow(canvas, center, -arrowSize, offset, paint);
+      case ApplicationDirection.downward:
+        _drawVerticalArrow(canvas, center, arrowSize, offset, paint);
+      case ApplicationDirection.inward:
+        _drawRadialArrows(canvas, center, arrowSize, -offset, paint);
+      case ApplicationDirection.none:
+        break;
+    }
+  }
+
+  Offset _arrowCenter(Size size, FaceLandmarks? landmarks) {
+    if (landmarks != null && !landmarks.boundingBox.isEmpty) {
+      final bbox = landmarks.boundingBox;
+      return Offset(bbox.left + bbox.width / 2, bbox.top + bbox.height / 2);
+    }
+    return Offset(size.width / 2, size.height / 2);
+  }
+
+  void _drawVerticalArrow(
+    Canvas canvas,
+    Offset center,
+    double length,
+    double offset,
+    Paint paint,
+  ) {
+    final start = center.translate(0, -length / 2 + offset);
+    final end = center.translate(0, length / 2 + offset);
+    canvas.drawLine(start, end, paint);
+    // Arrowhead
+    final headSize = length.abs() * 0.3;
+    canvas.drawLine(
+        end, end.translate(-headSize, length.isNegative ? -headSize : headSize), paint);
+    canvas.drawLine(
+        end, end.translate(headSize, length.isNegative ? -headSize : headSize), paint);
+  }
+
+  void _drawRadialArrows(
+    Canvas canvas,
+    Offset center,
+    double radius,
+    double offset,
+    Paint paint,
+  ) {
+    const count = 4;
+    for (var i = 0; i < count; i++) {
+      final angle = i * (2 * math.pi / count);
+      final r = radius + offset;
+      final end = center.translate(r * math.cos(angle), r * math.sin(angle));
+      final start = center.translate(
+          radius * 0.3 * math.cos(angle), radius * 0.3 * math.sin(angle));
+      canvas.drawLine(start, end, paint);
+      // Small arrowhead
+      final headLen = radius * 0.2;
+      final perpAngle1 = angle + math.pi * 0.8;
+      canvas.drawLine(end,
+          end.translate(headLen * math.cos(perpAngle1), headLen * math.sin(perpAngle1)), paint);
+      final perpAngle2 = angle - math.pi * 0.8;
+      canvas.drawLine(end,
+          end.translate(headLen * math.cos(perpAngle2), headLen * math.sin(perpAngle2)), paint);
+    }
+  }
+
   // ── Lip overlay ───────────────────────────────────────────────────────────
 
   void _drawLip(
@@ -609,8 +699,4 @@ class OverlayRenderer {
 
   @Deprecated('Use drawOverlay instead')
   Offset? calculateCheekCenter(List<FacePoint> landmarks, bool isLeft) => null;
-
-  // Suppress "unused import" for dart:math
-  // ignore: unused_element
-  double _noop() => math.pi;
 }
